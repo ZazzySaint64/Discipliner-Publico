@@ -177,6 +177,15 @@ create table if not exists crash_reports (
 alter table crash_reports enable row level security;
 create policy "crash_reports: qualquer um insere" on crash_reports
     for insert with check (true);
+-- qualquer um insere com a chave pública: sem teto de tamanho, dava pra
+-- encher o banco com textos gigantes (migração crash_reports_limites_tamanho)
+alter table crash_reports
+    add constraint crash_reports_install_id_len check (length(install_id) <= 64),
+    add constraint crash_reports_app_version_len check (length(app_version) <= 20),
+    add constraint crash_reports_platform_len check (length(platform) <= 20),
+    add constraint crash_reports_os_version_len check (length(os_version) <= 200),
+    add constraint crash_reports_error_type_len check (length(error_type) <= 200),
+    add constraint crash_reports_traceback_len check (length(traceback) <= 10000);
 
 -- Telemetria mínima de retenção (ver telemetry.py): 1 linha por aparelho/dia/
 -- tipo, anônima (install_id aleatório). Só INSERT, sem SELECT pela anon key;
