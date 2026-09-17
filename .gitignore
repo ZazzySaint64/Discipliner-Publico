@@ -28,11 +28,15 @@ _first_run.py
 
 # config da IDE — específico da máquina, fora do repo
 .idea/
+.vscode/
 
-# saída e cache do buildozer (empacotamento Android) — não commitar,
-# o .apk final fica como artifact do workflow do GitHub Actions
+# saída e cache do buildozer (empacotamento Android) e pacotes gerados —
+# o APK é buildado localmente (scripts/build-local.sh), nunca vai pro repo
 .buildozer/
 bin/
+*.apk
+*.aab
+*.log
 
 # cache local do CLI do Supabase (versão checada, ref do projeto linkado) —
 # específico da máquina, não do projeto
@@ -45,3 +49,5 @@ profile_photo*.png
 galeria_play_store/
 # documento de trabalho com limitacoes/pendencias
 LIMITACOES.md
+# relatórios de auditoria de segurança feitos localmente
+CLAUDE-SECURITY-*/

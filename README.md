@@ -130,6 +130,8 @@ A conta é opcional e roda no **Supabase**:
 - **Pagamento confirmado no servidor.** Os webhooks (Stripe e Mercado Pago) validam assinatura ou buscam o pagamento de novo na API, com idempotência.
 - **Telemetria e crash anônimos.** Só um identificador aleatório de instalação, nunca e-mail, nome ou missão (detalhes abaixo).
 
+Achou uma falha? Veja como reportar em [`SECURITY.md`](SECURITY.md).
+
 ## Privacidade: o que o app manda pra fora
 
 - **Relato de crash:** texto do erro, versão do app e do sistema, identificador aleatório.
@@ -158,7 +160,7 @@ O primeiro build leva de 30 a 60 minutos (baixa SDK, NDK e recipes); os seguinte
 venv\Scripts\python scripts/run_tests.py
 ```
 
-29 arquivos de teste cobrem a lógica sem abrir a interface: missões, sequência, multiplicador, nível, conta (incluindo token forjado e replay de deep link), backup, lembrete, alarme, reconquista, telemetria, emblemas e traduções. Rodam também no GitHub Actions a cada push.
+29 arquivos de teste cobrem a lógica sem abrir a interface: missões, sequência, multiplicador, nível, conta (incluindo token forjado e replay de deep link), backup, lembrete, alarme, reconquista, telemetria, emblemas e traduções. Rodam também no GitHub Actions a cada push na `main` e em todo pull request.
 
 ## O resto do código
 
@@ -195,7 +197,7 @@ O detalhe de cada decisão (por que o serviço de lembrete é assim, como a cont
 - [Supabase](https://supabase.com), conta, banco e Edge Functions.
 - Fonte [Lilita One](https://fonts.google.com/specimen/Lilita+One), de Juan Montoreano, sob SIL Open Font License (ver `assets/fonts/LilitaOne-OFL.txt`).
 
-Ainda não defini uma licença pro código deste repositório.
+O código deste repositório tem **todos os direitos reservados**: ele está aqui pra ser lido e avaliado como portfólio, mas não pode ser copiado, modificado nem publicado sem autorização (ver [`LICENSE`](LICENSE)).
 
 ## Autor
 
