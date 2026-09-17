@@ -1,0 +1,4261 @@
+#:kivy 2.3.1
+#:import TITLE_FONT main.TITLE_FONT
+#:import SPLASH_FONT main.SPLASH_FONT
+#:import lip widgets.lip
+#:import texto_legivel widgets.texto_legivel
+#:import Window kivy.core.window.Window
+#:import SlideTransition kivy.uix.screenmanager.SlideTransition
+
+# Escala tipográfica — razão 1.2, ancorada no corpo em 14sp. Ver
+# docs/tipografia-e-navegacao.md. #:set (constante fixa no load) e não Property:
+# tamanho de fonte não muda em runtime, ao contrário das cores do tema.
+#:set FS_DISPLAY "28sp"
+#:set FS_TITLE "22sp"
+#:set FS_HEADING "17sp"
+#:set FS_SECTION "12sp"
+#:set FS_BODY "14sp"
+#:set FS_LABEL "12sp"
+#:set FS_CAPTION "11sp"
+#:set FS_NAV "10sp"
+
+# Paleta claymorphism: pastel, fosco, sombra dupla pra dar volume "de massinha".
+# As cores em si (LIGHT_THEME/DARK_THEME) vivem em main.py como Properties do App,
+# não como #:set daqui — só assim o modo escuro consegue trocar tudo em tempo real.
+
+
+<TextInput>:
+    # tira a textura degradê padrão do Kivy, deixa a cor sólida que cada campo já define
+    background_normal: ""
+    background_active: ""
+    cursor_color: app.accent
+
+
+<ClayCard>:
+    # card estilo Duolingo: borda de 2dp e um "lábio" de 4dp embaixo, na mesma
+    # cor (widgets.lip) — é o que dá a sensação de peça em relevo
+    canvas.before:
+        Color:
+            rgba: lip(self.bg_color, app.text_dark)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(16)]
+        Color:
+            rgba: self.bg_color
+        RoundedRectangle:
+            pos: self.x + dp(2), self.y + dp(4)
+            size: self.width - dp(4), self.height - dp(6)
+            radius: [dp(14)]
+
+
+<ClayButton>:
+    # botão 3D estilo Duolingo: a face fica em cima de um "lábio" de 4dp mais
+    # escuro; pressionado, a face DESCE e cobre o lábio, como uma tecla. O
+    # padding acompanha (4dp saem de baixo e vão pro topo) pra o texto descer
+    # junto com a face.
+    padding: (dp(10), dp(14), dp(10), dp(10)) if self.state == "down" else (dp(10), dp(10), dp(10), dp(14))
+    canvas.before:
+        Color:
+            rgba: lip(self.bg_color, app.text_dark)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(14)]
+        Color:
+            rgba: self.bg_color
+        RoundedRectangle:
+            pos: self.x, self.y + (0 if self.state == "down" else dp(4))
+            size: self.width, self.height - dp(4)
+            radius: [dp(14)]
+    Label:
+        # "(root.text,) and": sem citar root.text sozinho, o kv não religa o
+        # bind através do .upper() — o Label ficava com o texto vazio da criação
+        text: (root.text,) and root.text.upper()
+        # troca pra escuro/branco sozinho se a cor pedida some no fundo
+        # (ex.: texto branco num destaque verde-claro da cor personalizada)
+        color: texto_legivel(root.bg_color, root.text_color)
+        bold: True
+        font_size: root.font_size
+        on_size: root.fit_font_size(self.width)
+        on_text: root.fit_font_size(self.width)
+
+
+# aba da barra inferior: ícone de linha (canvas) + rótulo embaixo. Sem
+# fundo/pílula — só a cor muda entre ativa (accent) e inativa (muted).
+<NavTab>:
+    orientation: "vertical"
+    spacing: dp(2)
+    padding: 0, dp(4)
+    opacity: 0.6 if self.state == "down" else 1
+    # aba ativa em caixinha contornada, como a navegação do Duolingo
+    canvas.before:
+        Color:
+            rgba: (app.accent[0], app.accent[1], app.accent[2], 0.14) if self.active else (0, 0, 0, 0)
+        RoundedRectangle:
+            pos: self.x + dp(6), self.y + dp(2)
+            size: self.width - dp(12), self.height - dp(4)
+            radius: [dp(12)]
+        Color:
+            rgba: app.accent if self.active else (0, 0, 0, 0)
+        Line:
+            rounded_rectangle: (self.x + dp(6), self.y + dp(2), self.width - dp(12), self.height - dp(4), dp(12))
+            width: dp(1.4)
+    NavIcon:
+        kind: root.kind
+        color: app.accent if root.active else app.muted
+        size_hint_y: None
+        height: dp(24)
+    Label:
+        text: root.label
+        color: app.accent if root.active else app.muted
+        bold: root.active
+        font_size: FS_NAV
+        halign: "center"
+        valign: "top"
+        text_size: self.width, None
+        shorten: True
+
+
+<ClayCardButton>:
+    # mesmo card em relevo do ClayCard; pressionado, afunda sobre o lábio
+    canvas.before:
+        Color:
+            rgba: lip(self.bg_color, app.text_dark)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(16)]
+        Color:
+            rgba: self.bg_color
+        RoundedRectangle:
+            pos: self.x + dp(2), self.y + (dp(2) if self.state == "down" else dp(4))
+            size: self.width - dp(4), self.height - dp(6)
+            radius: [dp(14)]
+    canvas.after:
+        # setinha no canto — indica "isto é clicável, leva pra outro lugar"
+        # (mesma ideia da seta do ClaySpinner, só que apontando pro lado)
+        Color:
+            rgba: app.text_dark[0], app.text_dark[1], app.text_dark[2], 0.45
+        Triangle:
+            points:
+                self.right - dp(16), self.top - dp(10),\
+                self.right - dp(16), self.top - dp(18),\
+                self.right - dp(10), self.top - dp(14)
+
+
+<ClayCheck>:
+    size_hint: None, None
+    size: dp(42), dp(42)
+    canvas.before:
+        Color:
+            rgba: app.success if self.checked else (0, 0, 0, 0)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: app.success if self.checked else app.muted
+        Line:
+            ellipse: (self.x, self.y, self.width, self.height)
+            width: dp(1.5)
+    Label:
+        text: "OK" if root.checked else ""
+        color: texto_legivel(app.success, app.text_light)
+        bold: True
+        font_size: "11sp"
+
+
+<DayToggle>:
+    size_hint: None, None
+    size: dp(34), dp(34)
+    canvas.before:
+        Color:
+            rgba: app.accent if self.active else (0, 0, 0, 0)
+        Ellipse:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: app.accent if self.active else app.muted
+        Line:
+            ellipse: (self.x, self.y, self.width, self.height)
+            width: dp(1.5)
+    Label:
+        text: root.label_text
+        color: texto_legivel(app.accent, app.text_light) if root.active else app.text_dark
+        bold: True
+        font_size: "12sp"
+
+
+<ClaySpinner>:
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    color: app.text_dark
+    halign: "left"
+    valign: "middle"
+    padding: dp(16), 0
+    text_size: self.width - dp(40), None
+    bold: True
+    canvas.before:
+        # mesmo relevo dos botões (lábio de 4dp embaixo)
+        Color:
+            rgba: lip(app.accent_soft, app.text_dark)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(14)]
+        Color:
+            rgba: app.accent_soft
+        RoundedRectangle:
+            pos: self.x, self.y + dp(4)
+            size: self.width, self.height - dp(4)
+            radius: [dp(14)]
+        # seta indicando "isto abre uma lista de opções" (o Spinner de fábrica
+        # tinha uma seta assim, sumiu quando a gente tirou a textura padrão)
+        Color:
+            rgba: app.text_dark
+        Triangle:
+            points:
+                self.right - dp(24), self.center_y + dp(3),\
+                self.right - dp(14), self.center_y + dp(3),\
+                self.right - dp(19), self.center_y - dp(3)
+
+
+<DropDown>:
+    # o painel do dropdown não tinha fundo próprio — o conteúdo atrás (o resto da
+    # tela) vazava pelos vãos entre as opções arredondadas de baixo. Um fundo
+    # sólido único pra lista inteira resolve de raiz.
+    canvas.before:
+        Color:
+            rgba: app.bg_card_soft
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(8)]
+
+
+<SpinnerOption>:
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    color: app.text_dark
+    bold: True
+    font_size: "14sp"
+    canvas.before:
+        # opção encostada na vizinha (sem vão) + realce quando o dedo/mouse
+        # está em cima, só uma linha fina separando uma da outra
+        Color:
+            rgba: app.accent_soft if self.state == "down" else app.bg_card_soft
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: 0, 0, 0, 0.10
+        Line:
+            points: self.x, self.y, self.right, self.y
+            width: 1
+
+
+<ClayProgressBar>:
+    size_hint_y: None
+    height: dp(18)
+    canvas:
+        Color:
+            rgba: app.bg_card
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [self.height / 2]
+        Color:
+            rgba: app.accent
+        RoundedRectangle:
+            pos: self.pos
+            size: (max(self.height, self.width * self.value), self.height)
+            radius: [self.height / 2]
+        # faixa de brilho no terço de cima do preenchimento (a da barra do Duolingo)
+        Color:
+            rgba: 1, 1, 1, 0.28 if self.value > 0 else 0
+        RoundedRectangle:
+            pos: self.x + dp(6), self.top - self.height * 0.42
+            size: (max(0, self.width * self.value - dp(12)), self.height * 0.22)
+            radius: [self.height * 0.11]
+
+
+<AvatarThumb>:
+    size_hint: None, None
+    size: dp(64), dp(64)
+    disabled: not self.unlocked
+    canvas.before:
+        Color:
+            rgba: app.accent if app.profile_avatar == self.avatar_id else app.bg_card
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(8)]
+    Image:
+        source: root.img_path
+        pos: root.x + dp(4), root.y + dp(4)
+        size: root.width - dp(8), root.height - dp(8)
+        allow_stretch: True
+        keep_ratio: True
+        opacity: 1 if root.unlocked else 0.4
+
+    # cadeado sobre poses ainda não desbloqueadas — selo pequeno no canto (não
+    # cobrindo a pose inteira, senão dava pra ver quase nada do Focum por trás)
+    Image:
+        source: app.LOCK_ICON
+        size_hint: None, None
+        size: dp(22), dp(22)
+        pos: root.right - dp(24), root.y + dp(2)
+        opacity: 0 if root.unlocked else 1
+        allow_stretch: True
+        keep_ratio: True
+
+
+<FrameThumb>:
+    size_hint: None, None
+    size: dp(34), dp(34)
+    disabled: not self.unlocked
+    canvas.before:
+        Color:
+            rgba: root.frame_color
+        Line:
+            ellipse: (self.x, self.y, self.width, self.height)
+            width: dp(2) if (app.app_icon if root.action == "icon" else app.profile_frame) == root.frame_id else dp(1.2)
+
+    Image:
+        source: app.LOCK_ICON
+        size_hint: None, None
+        size: dp(14), dp(14)
+        pos: root.right - dp(14), root.y
+        opacity: 0 if root.unlocked else 1
+        allow_stretch: True
+        keep_ratio: True
+
+
+<MissionRow@BoxLayout>:
+    mission_id: 0
+    text_name: ""
+    text_periodicity: ""
+    text_difficulty: ""
+    difficulty_key: "facil"
+    points: 0
+    is_challenge: False  # veio de um Desafio — ganha CHALLENGE_MULTIPLIER ao concluir
+    done: False
+    scheduled: True  # False = diária com dias específicos, e hoje não é um deles
+    size_hint_y: None
+    height: dp(76)
+    padding: dp(6), 0
+    opacity: 1 if root.scheduled else 0.5
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(12)
+        spacing: dp(8)
+
+        ClayCheck:
+            mission_id: root.mission_id
+            checked: root.done
+            disabled: not root.scheduled
+
+        TapArea:
+            orientation: "vertical"
+            spacing: dp(3)
+            on_release: app.open_mission_details(root.mission_id)
+            Label:
+                text: root.text_name
+                color: app.text_dark
+                bold: True
+                font_size: "17sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+                shorten: True
+                shorten_from: "right"
+
+            # linha de etiquetas — periodicidade em texto discreto + badge de
+            # dificuldade colorido (inspirado nas tags de categoria/oferta da Amazon)
+            BoxLayout:
+                size_hint_y: None
+                height: dp(20)
+                spacing: dp(6)
+
+                Label:
+                    text: root.text_periodicity
+                    color: app.muted
+                    font_size: "11sp"
+                    size_hint_x: None
+                    width: self.texture_size[0]
+                    halign: "left"
+                    valign: "middle"
+                    text_size: None, self.height
+
+                BoxLayout:
+                    size_hint_x: None
+                    width: dp_label.texture_size[0] + dp(16)
+                    canvas.before:
+                        Color:
+                            rgba: app.difficulty_color(root.difficulty_key)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(8)]
+                    Label:
+                        id: dp_label
+                        text: root.text_difficulty
+                        color: texto_legivel(app.difficulty_color(root.difficulty_key), app.text_light)
+                        bold: True
+                        font_size: "10sp"
+
+                # selo do multiplicador de Desafio — mesma receita do badge de
+                # dificuldade (RoundedRectangle + Label), só que colapsa (width 0)
+                # quando a missão não veio de um Desafio
+                BoxLayout:
+                    size_hint_x: None
+                    width: (ch_label.texture_size[0] + dp(16)) if root.is_challenge else 0
+                    canvas.before:
+                        Color:
+                            rgba: app.success
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(8)]
+                    Label:
+                        id: ch_label
+                        text: (app.language and app.t('badge_challenge_multiplier')) if root.is_challenge else ""
+                        color: texto_legivel(app.success, app.text_light)
+                        bold: True
+                        font_size: "10sp"
+                        opacity: 1 if root.is_challenge else 0
+
+        # etiqueta de pontos, estilo preço — número grande em destaque, unidade
+        # pequena embaixo, mesma ideia da Amazon de "o número que importa" primeiro
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: None
+            width: dp(46)
+            Label:
+                text: "+" + str(root.points)
+                color: app.accent
+                bold: True
+                font_size: "18sp"
+            Label:
+                text: app.language and (app.t('point_plural'))
+                color: app.muted
+                font_size: "9sp"
+                size_hint_y: None
+                height: dp(12)
+
+        ClayButton:
+            text: app.language and (app.t('btn_edit'))
+            bg_color: app.accent_soft
+            text_color: app.text_dark
+            size_hint_x: None
+            width: dp(64)
+            on_release: app.open_edit_popup(root.mission_id)
+
+        ClayButton:
+            text: "×"
+            bg_color: app.danger
+            size_hint_x: None
+            width: dp(40)
+            on_release: app.on_remove_mission(root.mission_id)
+
+
+<RewardRow@BoxLayout>:
+    reward_id: 0
+    reward_name: ""
+    cost: 0
+    size_hint_y: None
+    height: dp(64)
+    padding: dp(6), 0
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(12)
+        spacing: dp(6)
+
+        # toque no nome/custo abre edição — mesmo padrão do MissionRow (o
+        # TapArea fica só na área de texto, nunca envolvendo outro botão,
+        # senão o toque conflita com Resgatar/× por dentro)
+        TapArea:
+            orientation: "vertical"
+            on_release: app.open_edit_reward_popup(root.reward_id)
+
+            Label:
+                text: root.reward_name
+                color: app.text_dark
+                bold: True
+                font_size: "15sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+                shorten: True
+
+            Label:
+                text: str(root.cost) + " " + app.points_word(root.cost)
+                color: app.accent
+                font_size: "12sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+        ClayButton:
+            text: app.language and (app.t('btn_redeem'))
+            bg_color: app.accent
+            disabled: app.available_points < root.cost
+            opacity: 1 if app.available_points >= root.cost else 0.5
+            size_hint_x: None
+            width: dp(84)
+            on_release: app.redeem_reward(root.reward_id)
+
+        ClayButton:
+            text: "×"
+            bg_color: app.danger
+            size_hint_x: None
+            width: dp(36)
+            on_release: app.on_remove_reward(root.reward_id)
+
+
+<RewardHistoryRow@BoxLayout>:
+    reward_name: ""
+    cost: 0
+    redeemed_at: ""
+    size_hint_y: None
+    height: dp(38)
+
+    ClayCard:
+        bg_color: app.bg_card
+        orientation: "horizontal"
+        padding: dp(10)
+
+        Label:
+            text: root.reward_name
+            color: app.text_dark
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+            shorten: True
+
+        Label:
+            text: "-" + str(root.cost)
+            color: app.danger
+            bold: True
+            size_hint_x: None
+            width: dp(46)
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
+
+        Label:
+            text: root.redeemed_at
+            color: app.muted
+            font_size: "11sp"
+            size_hint_x: None
+            width: dp(44)
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
+
+
+<SuggestionRow@BoxLayout>:
+    sugg_id: ""
+    text_name: ""
+    text_periodicity: ""
+    text_difficulty: ""
+    difficulty_key: "facil"
+    already_added: False  # já existe uma missão com esse sugg_id — vira "X" (ver main.py > added_suggestion_ids)
+    size_hint_y: None
+    height: dp(60)
+    padding: dp(4), 0
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(10)
+        spacing: dp(8)
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(2)
+
+            Label:
+                text: root.text_name
+                color: app.text_dark
+                bold: True
+                font_size: "13sp"
+                halign: "left"
+                valign: "middle"
+                text_size: self.size
+
+            BoxLayout:
+                size_hint_y: None
+                height: dp(16)
+                spacing: dp(6)
+
+                Label:
+                    text: root.text_periodicity
+                    color: app.muted
+                    font_size: "10sp"
+                    size_hint_x: None
+                    width: self.texture_size[0]
+                    text_size: None, self.height
+
+                BoxLayout:
+                    size_hint_x: None
+                    width: sugg_dp_label.texture_size[0] + dp(14)
+                    canvas.before:
+                        Color:
+                            rgba: app.difficulty_color(root.difficulty_key)
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(7)]
+                    Label:
+                        id: sugg_dp_label
+                        text: root.text_difficulty
+                        color: texto_legivel(app.difficulty_color(root.difficulty_key), app.text_light)
+                        bold: True
+                        font_size: "9sp"
+
+        ClayButton:
+            text: "X" if root.already_added else "+"
+            bg_color: app.muted if root.already_added else app.accent
+            disabled: root.already_added
+            size_hint_x: None
+            width: dp(40)
+            on_release: app.add_suggested_mission(root)
+
+
+<ChallengeRow@BoxLayout>:
+    challenge_id: ""
+    text_name: ""
+    text_desc: ""
+    already_added: False  # todas as missões desse desafio já foram adicionadas — vira "X" (ver main.py > added_challenge_ids)
+    size_hint_y: None
+    height: dp(76)
+    padding: dp(4), 0
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(10)
+        spacing: dp(8)
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(2)
+
+            Label:
+                text: root.text_name
+                color: app.text_dark
+                bold: True
+                font_size: "14sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.size
+
+            Label:
+                text: root.text_desc
+                color: app.muted
+                font_size: "11sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.size
+
+        ClayButton:
+            text: "X" if root.already_added else (app.language and app.t('btn_add_all'))
+            bg_color: app.muted if root.already_added else app.accent
+            disabled: root.already_added
+            size_hint_x: None
+            width: dp(76)
+            on_release: app.add_challenge(root)
+
+
+# cabeçalho de seção — bold, CAIXA ALTA, discreto (ver doc). O Kivy não
+# transforma texto: SEMPRE passe a string já com .upper().
+<SectionLabel@Label>:
+    color: app.muted
+    bold: True
+    font_size: FS_SECTION
+    size_hint_y: None
+    height: dp(28)
+    padding: dp(6), dp(6)
+    halign: "left"
+    valign: "bottom"
+    text_size: self.size
+
+
+# apelido: mesmo visual de SectionLabel, nome mantido pelas telas de histórico
+<HistorySectionLabel@SectionLabel>:
+    size_hint_y: None
+
+
+<HistoryRow@BoxLayout>:
+    mission_name: ""
+    periodicity_text: ""
+    obs_text: ""
+    points_text: ""
+    date_text: ""
+    size_hint_y: None
+    height: dp(72) if root.obs_text else dp(56)
+    padding: dp(6), 0
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(12)
+        spacing: dp(8)
+
+        BoxLayout:
+            orientation: "vertical"
+            spacing: dp(2)
+
+            Label:
+                text: root.mission_name
+                color: app.text_dark
+                bold: True
+                font_size: "13sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.size
+
+            Label:
+                text: root.periodicity_text
+                color: app.muted
+                font_size: "10sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.size
+                size_hint_y: None
+                height: dp(15)
+
+            Label:
+                text: root.obs_text
+                color: app.muted
+                italic: True
+                font_size: "10sp"
+                halign: "left"
+                valign: "top"
+                text_size: self.size
+                size_hint_y: None
+                height: dp(15) if root.obs_text else 0
+
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: None
+            width: dp(56)
+
+            Label:
+                text: root.points_text
+                color: app.success
+                bold: True
+                font_size: "14sp"
+                halign: "right"
+                valign: "top"
+                text_size: self.size
+
+            Label:
+                text: root.date_text
+                color: app.muted
+                font_size: "10sp"
+                halign: "right"
+                valign: "bottom"
+                text_size: self.size
+
+
+<MonthStatRow@BoxLayout>:
+    month_label: ""
+    points_label: ""
+    size_hint_y: None
+    height: dp(44)
+    padding: dp(4), 0
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(12)
+
+        Label:
+            text: root.month_label
+            color: app.text_dark
+            bold: True
+            font_size: "13sp"
+            halign: "left"
+            valign: "middle"
+            text_size: self.size
+
+        Label:
+            text: root.points_label
+            color: app.accent
+            bold: True
+            font_size: "13sp"
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
+
+
+<MissionStatRow@BoxLayout>:
+    mission_name: ""
+    completions_label: ""
+    points_label: ""
+    size_hint_y: None
+    # a linha CRESCE com o conteúdo em vez de ficar presa em dp(44): "9 Pontos
+    # no Mês" não cabia numa linha só na coluna da direita, quebrava em duas e
+    # a segunda vazava pra fora do cartão (ficava cortada na tela). Idem pra
+    # idioma mais comprido (o alemão é bem maior que o português).
+    height: max(dp(44), pontos.texture_size[1] + dp(24), nome.texture_size[1] + dp(24))
+    padding: dp(4), 0
+
+    ClayCard:
+        bg_color: app.bg_card_soft
+        orientation: "horizontal"
+        padding: dp(12)
+        spacing: dp(6)
+
+        Label:
+            id: nome
+            text: root.mission_name
+            color: app.text_dark
+            bold: True
+            font_size: "13sp"
+            halign: "left"
+            valign: "middle"
+            # largura fixa + altura livre: quebra em 2 linhas se o nome for
+            # longo e a linha inteira acompanha (ver height do root)
+            text_size: self.width, None
+
+        Label:
+            text: root.completions_label
+            color: app.muted
+            font_size: "12sp"
+            size_hint_x: None
+            width: dp(40)
+            halign: "right"
+            valign: "middle"
+            text_size: self.size
+
+        Label:
+            id: pontos
+            text: root.points_label
+            color: app.accent
+            bold: True
+            font_size: "12sp"
+            size_hint_x: None
+            width: dp(96)
+            halign: "right"
+            valign: "middle"
+            text_size: self.width, None
+
+
+<BadgeCard@BoxLayout>:
+    name_text: ""
+    desc_text: ""
+    unlocked: False
+    preview_img: ""  # pose do Focum que essa conquista libera — "" quando não há uma
+    preview_frame_color: [0, 0, 0, 0]  # moldura que a conquista libera (anel) quando não há pose
+    badge_id: ""  # pra abrir os detalhes (e equipar como título) ao tocar
+    orientation: "vertical"
+    size_hint_y: None
+    height: dp(120)
+    padding: dp(4)
+
+    TapArea:
+        orientation: "horizontal"
+        on_release: app.open_badge_details(root.badge_id)
+
+        ClayCard:
+            bg_color: app.accent_soft if root.unlocked else app.bg_card
+            orientation: "horizontal"
+            padding: dp(12)
+            spacing: dp(8)
+
+            BoxLayout:
+                orientation: "vertical"
+                spacing: dp(4)
+
+                Label:
+                    text: root.name_text
+                    color: app.text_dark if root.unlocked else app.muted
+                    bold: True
+                    font_size: "13sp"
+                    halign: "left"
+                    valign: "top"
+                    text_size: self.size
+
+                Label:
+                    text: root.desc_text
+                    color: app.muted
+                    font_size: "11sp"
+                    halign: "left"
+                    valign: "top"
+                    text_size: self.size
+
+                Label:
+                    text: "" if root.unlocked else app.t('badge_locked')
+                    color: app.danger
+                    bold: True
+                    font_size: "10sp"
+                    size_hint_y: None
+                    height: dp(14) if not root.unlocked else 0
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+
+            # prévia da recompensa: pose do Focum, OU a moldura (anel colorido)
+            # quando o emblema libera moldura em vez de pose (multiplicador de
+            # sequência — ver mascot.reward_frame_color). Esmaece enquanto
+            # bloqueada — um "gostinho" do que vem a seguir.
+            Widget:
+                size_hint: None, None
+                size: (dp(52), dp(52)) if (root.preview_img or (root.preview_frame_color or (0, 0, 0, 0))[3]) else (0, 0)
+                opacity: 1 if root.unlocked else 0.4
+                canvas.after:
+                    Color:
+                        rgba: root.preview_frame_color or (0, 0, 0, 0)
+                    Line:
+                        ellipse: (self.x + dp(4), self.y + dp(4), self.width - dp(8), self.height - dp(8))
+                        width: dp(1.6)
+                # só entra quando há pose — Image de source vazio pinta um
+                # retângulo branco (textura None + Color branco), era esse o
+                # "fundo" atrás do anel da moldura
+                Image:
+                    source: root.preview_img
+                    pos: self.parent.pos
+                    size: self.parent.size if root.preview_img else (0, 0)
+                    allow_stretch: True
+                    keep_ratio: True
+
+
+<FieldLabel@Label>:
+    color: app.muted
+    bold: True
+    font_size: FS_LABEL
+    size_hint_y: None
+    # altura cresce com o texto (alguns rótulos, tipo o de requisitos de
+    # senha, quebram em 2 linhas) — texture_size[1] já dá ~18dp numa linha
+    # só, então os rótulos curtos ficam do jeito que sempre foram
+    height: max(dp(18), self.texture_size[1])
+    halign: "left"
+    valign: "middle"
+    text_size: self.width, None
+
+
+<MissionFormPopup>:
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    # fração da tela (não dp fixo) — o conteúdo cresceu (instruções + lembrete
+    # por missão) e varia demais (diária com dias específicos, Premium ou não)
+    # pra um número mágico continuar dando certo; o ScrollView de dentro cuida
+    # do que não couber
+    size_hint: 0.88, 0.85
+
+    ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            padding: dp(16)
+            spacing: dp(12)
+
+            ClayCard:
+                bg_color: app.bg_card_soft
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(6)
+                size_hint_y: None
+                height: self.minimum_height
+
+                FieldLabel:
+                    text: app.language and (app.t('field_name'))
+
+                TextInput:
+                    id: name_input
+                    hint_text: app.language and (app.t('mission_name_hint'))
+                    multiline: False
+                    # "null" desliga sugestão/correção do teclado — sem isso,
+                    # editar um nome pré-preenchido (não dá em campo vazio) às
+                    # vezes trava o backspace no Android: teclados como Gboard
+                    # apagam texto existente via uma chamada de IME (compose/
+                    # commit), não uma tecla crua, e o Kivy 2.3.1 nem sempre
+                    # roteia isso pro TextInput. Selecionar tudo e digitar por
+                    # cima funciona (manda o texto inteiro de uma vez) — só o
+                    # apagar incremental que travava.
+                    input_type: "null"
+                    size_hint_y: None
+                    height: dp(42)
+                    background_color: app.bg_app
+                    foreground_color: app.text_dark
+                    padding: dp(10), dp(10)
+
+                FieldLabel:
+                    text: app.language and (app.t('field_periodicity'))
+
+                ClaySpinner:
+                    id: periodicity_spinner
+                    values: app.language and app.periodicity_values()
+                    size_hint_y: None
+                    height: dp(42)
+                    on_text: root.is_daily = app.is_periodicity_daily(self.text)
+
+                FieldLabel:
+                    text: app.language and (app.t('field_difficulty'))
+
+                ClaySpinner:
+                    id: difficulty_spinner
+                    values: app.language and app.difficulty_values()
+                    size_hint_y: None
+                    height: dp(42)
+
+                # "nos meus dias de folga" e "dias específicos" são mutuamente
+                # exclusivos (ver confirm() em main.py) — só some se existir um
+                # ciclo pessoal configurado (app.cycle_enabled, ver Ajustes)
+                ClayButton:
+                    text: app.language and (app.t('field_follow_cycle'))
+                    bg_color: app.accent if root.follow_cycle else app.accent_soft
+                    text_color: app.text_light if root.follow_cycle else app.text_dark
+                    size_hint_y: None
+                    height: (dp(38) if app.cycle_enabled else 0) if root.is_daily else 0
+                    opacity: (1 if app.cycle_enabled else 0) if root.is_daily else 0
+                    disabled: (not app.cycle_enabled) if root.is_daily else True
+                    on_release: root.follow_cycle = not root.follow_cycle
+
+                FieldLabel:
+                    text: app.language and (app.t('field_specific_days'))
+                    opacity: (1 if not root.follow_cycle else 0) if root.is_daily else 0
+                    height: (dp(18) if not root.follow_cycle else 0) if root.is_daily else 0
+
+                BoxLayout:
+                    id: day_toggles
+                    size_hint_y: None
+                    height: (dp(34) if not root.follow_cycle else 0) if root.is_daily else 0
+                    opacity: (1 if not root.follow_cycle else 0) if root.is_daily else 0
+                    disabled: (root.follow_cycle) if root.is_daily else True
+                    spacing: dp(4)
+
+                # texto livre — ex.: os exercícios de um treino (mostrado
+                # depois na aba de detalhes, ao tocar na missão)
+                FieldLabel:
+                    text: app.language and (app.t('field_instructions'))
+
+                TextInput:
+                    id: instructions_input
+                    hint_text: app.language and (app.t('instructions_hint'))
+                    multiline: True
+                    size_hint_y: None
+                    # sem piso: multiline alinha em cima, um piso maior que o
+                    # texto sobrava vazio embaixo. Só teto, pra não crescer demais.
+                    height: min(dp(120), self.minimum_height)
+                    background_color: app.bg_app
+                    foreground_color: app.text_dark
+                    padding: dp(10), dp(10)
+
+                # lembrete individual — recurso Premium (ver README > Monetização);
+                # spinners ficam desabilitados (não escondidos) pra quem não é
+                # Premium, mesma ideia da cor personalizada em Ajustes
+                FieldLabel:
+                    text: app.language and (app.t('field_mission_reminder') + ("" if app.is_premium else (" — " + app.t('label_premium_only'))))
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(42)
+                    spacing: dp(8)
+                    disabled: not app.is_premium
+
+                    ClayButton:
+                        text: root.reminder_escolhido or (app.language and app.t('reminder_none'))
+                        bg_color: app.bg_card
+                        text_color: app.text_dark
+                        on_release: root.escolher_horario()
+
+                    ClayButton:
+                        text: "X"
+                        bg_color: app.bg_card_soft
+                        text_color: app.muted
+                        size_hint_x: None
+                        width: dp(48)
+                        disabled: not root.reminder_escolhido
+                        on_release: root.reminder_escolhido = ""
+
+            ClayCard:
+                bg_color: app.accent_soft
+                size_hint_y: None
+                height: dp(44)
+                Label:
+                    text: app.language and (app.t('points_worth_prefix') + " " + str(app.points_for(periodicity_spinner.text, difficulty_spinner.text)) + " " + app.points_word(app.points_for(periodicity_spinner.text, difficulty_spinner.text)))
+                    color: app.text_dark
+                    bold: True
+
+            Label:
+                text: root.limit_error
+                color: app.danger
+                font_size: "11sp"
+                halign: "center"
+                valign: "middle"
+                text_size: self.width, None
+                size_hint_y: None
+                height: (self.texture_size[1] + dp(4)) if root.limit_error else 0
+
+            ClayButton:
+                id: confirm_button
+                bg_color: app.accent
+                size_hint_y: None
+                height: dp(48)
+                on_release: root.confirm()
+
+
+<CompleteMissionPopup>:
+    title: app.language and (app.t('popup_complete_title'))
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.success
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.85, None
+    height: dp(280)
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(10)
+
+        FieldLabel:
+            text: app.language and (app.t('field_obs_optional'))
+
+        TextInput:
+            id: obs_input
+            multiline: True
+            size_hint_y: None
+            height: dp(110)
+            background_color: app.bg_card_soft
+            foreground_color: app.text_dark
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            spacing: dp(10)
+
+            ClayButton:
+                text: app.language and (app.t('btn_cancel'))
+                bg_color: app.accent_soft
+                text_color: app.text_dark
+                on_release: root.cancel()
+
+            ClayButton:
+                text: app.language and (app.t('btn_complete'))
+                bg_color: app.success
+                on_release: root.confirm()
+
+
+<RewardFormPopup>:
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.85, None
+    height: dp(300)
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(10)
+
+        FieldLabel:
+            text: app.language and (app.t('field_reward_name'))
+
+        TextInput:
+            id: reward_name_input
+            hint_text: app.language and (app.t('reward_name_hint'))
+            multiline: False
+            size_hint_y: None
+            height: dp(42)
+            background_color: app.bg_card_soft
+            foreground_color: app.text_dark
+
+        FieldLabel:
+            text: app.language and (app.t('field_reward_cost'))
+
+        TextInput:
+            id: reward_cost_input
+            hint_text: "20"
+            multiline: False
+            input_filter: "int"
+            size_hint_y: None
+            height: dp(42)
+            background_color: app.bg_card_soft
+            foreground_color: app.text_dark
+
+        Widget:
+
+        ClayButton:
+            id: reward_confirm_button
+            bg_color: app.accent
+            size_hint_y: None
+            height: dp(48)
+            on_release: root.confirm()
+
+
+<MissionDetailPopup>:
+    # sem título/separador automático do Popup (o espaçamento interno dele é
+    # fixo e não dava pra controlar) — o nome da missão vira só mais um Label
+    # dentro do nosso próprio layout, com o respiro que a gente quiser
+    title: ""
+    separator_height: 0
+    background: ""
+    background_color: 0, 0, 0, 0
+    # fração da tela (não dp fixo): instruções são texto livre, de tamanho
+    # variável — um dp fixo cedo ou tarde ia ficar curto ou sobrar demais
+    size_hint: 0.85, 0.8
+    # bordas redondas + contorno um tom mais escuro que o próprio fundo —
+    # mesma receita do ClayCard/ClayButton (retângulo arredondado + Line por
+    # cima), porque o retângulo que o ModalView desenha sozinho é quadrado.
+    # Usa bg_card_soft (o tom mais claro de cartão que o app tem). Os cartões
+    # de campo (mais abaixo) usam bg_card, um tom abaixo, pra continuarem
+    # distinguíveis do fundo da aba — 2 níveis: aba < cartões dela.
+    # overlay_color zerado: o ModalView (Popup) desenha por padrão uma
+    # cortina escurecendo a TELA INTEIRA (inclusive por cima da nossa aba,
+    # já que ela roda depois do canvas.before) — com background_color
+    # transparente (mais abaixo) nada cancelava essa cortina aqui, então a
+    # aba saía sempre escurecida, em qualquer tema. Só essa aba perde o
+    # escurecimento do fundo; as outras (que usam background_color opaco)
+    # continuam normais.
+    overlay_color: 0, 0, 0, 0
+    canvas.before:
+        Color:
+            rgba: app.bg_card_soft
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(16)]
+        Color:
+            rgba: app.bg_card_soft[0] * 0.7, app.bg_card_soft[1] * 0.7, app.bg_card_soft[2] * 0.7, 1
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, dp(16))
+            width: dp(1.4)
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(12)
+
+        # título — nome inteiro da missão, sem o corte "..." que a linha usa
+        Label:
+            text: root.nome_da_missao
+            color: app.text_dark
+            bold: True
+            font_size: "20sp"
+            halign: "center"
+            valign: "middle"
+            text_size: self.width, None
+            size_hint_y: None
+            height: self.texture_size[1] + dp(8)
+
+        ScrollView:
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: dp(12)
+                padding: 0, 0, dp(4), 0
+
+                # cada campo é sua própria fileira (rótulo à esquerda, valor
+                # em destaque à direita) — mesmo estilo já usado em
+                # Sequências pro "Melhor" (streak_best_label)
+                ClayCard:
+                    bg_color: app.bg_card
+                    orientation: "horizontal"
+                    padding: dp(14)
+                    size_hint_y: None
+                    height: dp(52)
+
+                    Label:
+                        text: app.language and (app.t('field_periodicity'))
+                        color: app.muted
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+
+                    Label:
+                        text: root.periodicidade
+                        color: app.text_dark
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+
+                ClayCard:
+                    bg_color: app.bg_card
+                    orientation: "horizontal"
+                    padding: dp(14)
+                    size_hint_y: None
+                    height: dp(52)
+
+                    Label:
+                        text: app.language and (app.t('field_difficulty'))
+                        color: app.muted
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+
+                    Label:
+                        text: root.dificuldade
+                        color: app.difficulty_color(root.difficulty_key)
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+
+                ClayCard:
+                    bg_color: app.bg_card
+                    orientation: "horizontal"
+                    padding: dp(14)
+                    size_hint_y: None
+                    height: dp(52)
+
+                    Label:
+                        text: app.language and (app.t('field_points'))
+                        color: app.muted
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+
+                    Label:
+                        text: "+" + root.pontuacao
+                        color: app.accent
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+
+                # instruções — texto livre (ex.: exercícios do treino), só
+                # aparece quando a missão tem alguma coisa escrita ali
+                ClayCard:
+                    bg_color: app.bg_card
+                    orientation: "vertical"
+                    padding: dp(14)
+                    spacing: dp(6)
+                    size_hint_y: None
+                    height: self.minimum_height if root.instrucoes else 0
+                    opacity: 1 if root.instrucoes else 0
+
+                    Label:
+                        text: app.language and (app.t('field_instructions'))
+                        color: app.muted
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+
+                    Label:
+                        text: root.instrucoes
+                        color: app.text_dark
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: self.texture_size[1]
+
+        ClayButton:
+            text: app.language and (app.t('btn_close'))
+            bg_color: app.accent_soft
+            text_color: app.text_dark
+            size_hint_y: None
+            height: dp(44)
+            on_release: root.dismiss()
+
+
+<BadgeDetailPopup>:
+    # mesma receita do MissionDetailPopup (ver comentários lá) — título e
+    # fundo próprios, sem o do Popup padrão do Kivy
+    title: ""
+    separator_height: 0
+    background: ""
+    background_color: 0, 0, 0, 0
+    size_hint: 0.85, None
+    # +52dp quando o botão de certificado aparece (emblema de sequência
+    # diária desbloqueado) — senão o espaçador vazio absorve a diferença
+    height: dp(320) + (dp(52) if root.milestone_days and root.unlocked else 0)
+    overlay_color: 0, 0, 0, 0
+    canvas.before:
+        Color:
+            rgba: app.bg_card_soft
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [dp(16)]
+        Color:
+            rgba: app.bg_card_soft[0] * 0.7, app.bg_card_soft[1] * 0.7, app.bg_card_soft[2] * 0.7, 1
+        Line:
+            rounded_rectangle: (self.x, self.y, self.width, self.height, dp(16))
+            width: dp(1.4)
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(20)
+        spacing: dp(12)
+
+        Label:
+            text: root.nome_do_emblema
+            color: app.text_dark
+            bold: True
+            font_size: "20sp"
+            halign: "center"
+            valign: "middle"
+            text_size: self.width, None
+            size_hint_y: None
+            height: self.texture_size[1] + dp(8)
+
+        ClayCard:
+            bg_color: app.bg_card
+            orientation: "vertical"
+            padding: dp(14)
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: root.descricao
+                color: app.text_dark
+                halign: "center"
+                valign: "middle"
+                text_size: self.width, None
+                size_hint_y: None
+                height: self.texture_size[1]
+
+        Label:
+            text: "" if root.unlocked else app.t('badge_locked_hint')
+            color: app.danger
+            bold: True
+            font_size: "11sp"
+            halign: "center"
+            valign: "middle"
+            text_size: self.width, None
+            size_hint_y: None
+            height: (self.texture_size[1] + dp(4)) if not root.unlocked else 0
+
+        Widget:
+
+        # só dá pra equipar um emblema já desbloqueado
+        ClayButton:
+            text: app.t('btn_unequip_title') if root.equipped else app.t('btn_equip_title')
+            bg_color: app.bg_card_soft if root.equipped else app.accent
+            text_color: app.text_dark if root.equipped else app.text_light
+            size_hint_y: None
+            height: dp(44) if root.unlocked else 0
+            opacity: 1 if root.unlocked else 0
+            disabled: not root.unlocked
+            on_release: root.toggle_equip()
+
+        # certificado compartilhável — só pros marcos de sequência DIÁRIA
+        # (streak_3/7/14/30/100, ver main.DAILY_STREAK_MILESTONES) já desbloqueados
+        ClayButton:
+            text: app.language and (app.t('btn_share_certificate'))
+            bg_color: app.accent
+            size_hint_y: None
+            height: dp(44) if (root.milestone_days and root.unlocked) else 0
+            opacity: 1 if (root.milestone_days and root.unlocked) else 0
+            disabled: not (root.milestone_days and root.unlocked)
+            on_release: app.share_milestone_certificate(root.milestone_days)
+
+        ClayButton:
+            text: app.language and (app.t('btn_close'))
+            bg_color: app.accent_soft
+            text_color: app.text_dark
+            size_hint_y: None
+            height: dp(44)
+            on_release: root.dismiss()
+
+
+<TextPopup>:
+    # popup genérico só-leitura — usado pra política de privacidade e termos de uso
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.9, 0.85
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(12)
+
+        ScrollView:
+            Label:
+                text: root.body_text
+                color: app.text_dark
+                font_size: "13sp"
+                halign: "left"
+                valign: "top"
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+
+        ClayButton:
+            text: app.language and (app.t('btn_close'))
+            bg_color: app.accent
+            size_hint_y: None
+            height: dp(48)
+            on_release: root.dismiss()
+
+
+<TimePickerPopup>:
+    title: root.titulo
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.86, None
+    height: dp(330)
+    auto_dismiss: False
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(12)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(180)
+            spacing: dp(6)
+
+            # coluna da HORA
+            BoxLayout:
+                orientation: "vertical"
+                spacing: dp(4)
+                ClayButton:
+                    text: "+"
+                    bg_color: app.accent_soft
+                    text_color: app.text_dark
+                    on_release: root.mexer("hora", 1)
+                Label:
+                    text: "%02d" % root.hora
+                    font_name: TITLE_FONT
+                    bold: True
+                    font_size: "40sp"
+                    color: app.text_dark
+                ClayButton:
+                    text: "-"
+                    bg_color: app.accent_soft
+                    text_color: app.text_dark
+                    on_release: root.mexer("hora", -1)
+
+            Label:
+                text: ":"
+                font_name: TITLE_FONT
+                bold: True
+                font_size: "34sp"
+                color: app.muted
+                size_hint_x: None
+                width: dp(18)
+
+            # coluna do MINUTO: +1 e +5, porque 60 valores de 1 em 1 seriam
+            # muitos toques pra chegar em, digamos, :45
+            BoxLayout:
+                orientation: "vertical"
+                spacing: dp(4)
+                BoxLayout:
+                    spacing: dp(4)
+                    ClayButton:
+                        text: "+1"
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        on_release: root.mexer("minuto", 1)
+                    ClayButton:
+                        text: "+5"
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        on_release: root.mexer("minuto", 5)
+                Label:
+                    text: "%02d" % root.minuto
+                    font_name: TITLE_FONT
+                    bold: True
+                    font_size: "40sp"
+                    color: app.text_dark
+                BoxLayout:
+                    spacing: dp(4)
+                    ClayButton:
+                        text: "-1"
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        on_release: root.mexer("minuto", -1)
+                    ClayButton:
+                        text: "-5"
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        on_release: root.mexer("minuto", -5)
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(44)
+            spacing: dp(10)
+
+            ClayButton:
+                text: app.language and (app.t('btn_cancel'))
+                bg_color: app.bg_card
+                text_color: app.text_dark
+                on_release: root.dismiss()
+
+            ClayButton:
+                text: (root.hora, root.minuto) and root.texto()
+                bg_color: app.accent
+                text_color: app.text_light
+                on_release: root.confirmar()
+
+
+<ConfirmPopup>:
+    # confirmação de ação sem desfazer (apagar missão) — ver App.on_remove_mission.
+    # auto_dismiss False de propósito: sair tocando fora é ambíguo aqui, tem
+    # que ser um "Cancelar" explícito.
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.danger
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.88, None
+    height: confirm_box.height + dp(64)
+    auto_dismiss: False
+
+    BoxLayout:
+        id: confirm_box
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height
+        padding: dp(16)
+        spacing: dp(14)
+
+        Label:
+            text: root.message
+            color: app.text_dark
+            font_size: "15sp"
+            halign: "center"
+            valign: "middle"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(44)
+            spacing: dp(10)
+
+            ClayButton:
+                text: app.language and (app.t('btn_cancel'))
+                bg_color: app.bg_card
+                text_color: app.text_dark
+                on_release: root.dismiss()
+
+            ClayButton:
+                id: confirm_delete_button
+                text: root.confirm_text
+                bg_color: app.danger
+                text_color: app.text_light
+                on_release: root.confirm()
+
+
+<ApagarContaPopup>:
+    # último passo de apagar a conta (App._enviar_codigo_apagar). auto_dismiss
+    # False: sair tocando fora é ambíguo numa ação sem volta
+    title: app.language and (app.t('delete_code_title'))
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.danger
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.9, None
+    height: apagar_box.height + dp(64)
+    auto_dismiss: False
+
+    BoxLayout:
+        id: apagar_box
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height
+        padding: dp(16)
+        spacing: dp(12)
+
+        Label:
+            text: app.language and (app.t('delete_code_body').format(email=root.email))
+            color: app.text_dark
+            font_size: "14sp"
+            halign: "center"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        TextInput:
+            id: codigo_input
+            hint_text: app.language and (app.t('field_code_hint'))
+            input_filter: "int"
+            multiline: False
+            halign: "center"
+            font_size: "22sp"
+            size_hint_y: None
+            height: dp(52)
+            background_color: app.bg_card
+            foreground_color: app.text_dark
+
+        Label:
+            text: root.erro
+            color: app.danger
+            font_size: "12sp"
+            halign: "center"
+            size_hint_y: None
+            height: self.texture_size[1] if root.erro else 0
+            text_size: self.width, None
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(48)
+            spacing: dp(10)
+
+            ClayButton:
+                text: app.language and (app.t('btn_cancel'))
+                bg_color: app.bg_card
+                text_color: app.text_dark
+                on_release: root.dismiss()
+
+            ClayButton:
+                text: app.language and (app.t('btn_delete_forever'))
+                bg_color: app.danger
+                text_color: app.text_light
+                on_release: root.confirmar()
+
+
+<ReminderPopup>:
+    # notificação DENTRO do app (a de sistema é best-effort) — curta, some ao
+    # tocar em qualquer lugar. Ver App._fire_reminder / _check_reminder.
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.88, None
+    height: content_box.height + dp(64)
+    auto_dismiss: True
+
+    BoxLayout:
+        id: content_box
+        orientation: "vertical"
+        size_hint_y: None
+        height: self.minimum_height
+        padding: dp(16)
+        spacing: dp(14)
+
+        Label:
+            text: root.message
+            color: app.text_dark
+            font_size: "15sp"
+            halign: "center"
+            valign: "middle"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        ClayButton:
+            text: app.language and (app.t('btn_close'))
+            bg_color: app.accent
+            size_hint_y: None
+            height: dp(46)
+            on_release: root.dismiss()
+
+
+<AlarmeView>:
+    # tela cheia do alarme de missão (App.abrir_alarme). auto_dismiss False:
+    # tocar fora não encerra alarme sem querer, só o botão
+    auto_dismiss: False
+    size_hint: 1, 1
+    background: ""
+    background_color: app.bg_app
+    overlay_color: app.bg_app
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(28), dp(40)
+        spacing: dp(10)
+
+        Label:
+            text: root.horario
+            font_name: TITLE_FONT
+            bold: True
+            font_size: "68sp"
+            color: app.accent
+            size_hint_y: None
+            height: dp(84)
+
+        Label:
+            text: app.language and (app.t('alarm_title'))
+            color: app.muted
+            font_size: "18sp"
+            size_hint_y: None
+            height: dp(26)
+
+        Image:
+            source: "assets/focum/focum_alarm.png"
+            allow_stretch: True
+            keep_ratio: True
+
+        Label:
+            text: root.mission_name
+            font_name: TITLE_FONT
+            bold: True
+            font_size: "32sp"
+            color: app.text_dark
+            halign: "center"
+            text_size: self.width, None
+            size_hint_y: None
+            height: self.texture_size[1] + dp(8)
+
+        Widget:
+            size_hint_y: None
+            height: dp(18)
+
+        ClayButton:
+            text: app.language and (app.t('btn_stop_alarm'))
+            bg_color: app.danger
+            text_color: app.text_light
+            size_hint_y: None
+            height: dp(64)
+            on_release: root.dismiss()
+
+
+# pílula dos atalhos no topo da aba Missões: mesmo relevo dos botões (lábio
+# embaixo, afunda ao tocar), contorno na cor de destaque
+<ChipButton@ButtonBehavior+Label>:
+    color: app.text_dark
+    font_size: FS_BODY
+    bold: True
+    size_hint_x: None
+    width: self.texture_size[0] + dp(28)
+    # o texto desce junto com a face (4dp de padding trocam de lado)
+    padding: (0, dp(4), 0, 0) if self.state == "down" else (0, 0, 0, dp(4))
+    canvas.before:
+        Color:
+            rgba: lip(app.accent, app.text_dark)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [(self.height - dp(4)) / 2]
+        Color:
+            rgba: app.bg_card_soft
+        RoundedRectangle:
+            pos: self.x + dp(2), self.y + (dp(2) if self.state == "down" else dp(4))
+            size: self.width - dp(4), self.height - dp(6)
+            radius: [(self.height - dp(6)) / 2]
+
+
+<SuggestionsPopup>:
+    title: app.language and (app.t('mission_suggestions_title'))
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.9, 0.85
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(10)
+
+        ScrollView:
+            GridLayout:
+                id: suggestions_list
+                cols: 1
+                spacing: dp(8)
+                size_hint_y: None
+                height: self.minimum_height
+
+        ClayButton:
+            text: app.language and (app.t('btn_close'))
+            bg_color: app.accent_soft
+            text_color: app.text_dark
+            size_hint_y: None
+            height: dp(44)
+            on_release: root.dismiss()
+
+
+<ChallengesPopup>:
+    title: app.language and (app.t('challenges_title'))
+    title_color: app.text_dark
+    title_align: "center"
+    separator_color: app.accent
+    background: ""
+    background_color: app.bg_app
+    size_hint: 0.9, 0.7
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(16)
+        spacing: dp(10)
+
+        Label:
+            text: app.language and (app.t('challenges_multiplier_note'))
+            color: app.success
+            bold: True
+            font_size: "12sp"
+            halign: "center"
+            valign: "top"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        ScrollView:
+            GridLayout:
+                id: challenges_list
+                cols: 1
+                spacing: dp(8)
+                size_hint_y: None
+                height: self.minimum_height
+
+        ClayButton:
+            text: app.language and (app.t('btn_close'))
+            bg_color: app.accent_soft
+            text_color: app.text_dark
+            size_hint_y: None
+            height: dp(44)
+            on_release: root.dismiss()
+
+
+# miniatura de banner na tela de perfil — BannerArt pequeno + anel de
+# seleção / contorno tracejado pro "none" (esses dois no canvas.after da
+# classe, ver widgets.BannerThumb)
+<BannerThumb>:
+    size_hint: None, None
+    size: dp(96), dp(52)
+    BannerArt:
+        size_hint: None, None
+        pos: root.pos
+        size: root.size
+        pattern: root.pattern
+        color: root.color
+
+
+# Overlay do tutorial guiado — adicionado ao Window por main.build(), não é
+# filho do root. O desenho (scrim + contorno + seta) é feito no _redraw da
+# classe (widgets.TutorialOverlay); aqui só o card de texto + botões.
+<TutorialOverlay>:
+    size: Window.size
+    pos: 0, 0
+
+    BoxLayout:
+        id: tut_card
+        orientation: "vertical"
+        size_hint: None, None
+        width: min(dp(320), root.width - dp(32))
+        height: self.minimum_height
+        x: root.card_x
+        y: root.card_y
+        padding: dp(16)
+        spacing: dp(10)
+        canvas.before:
+            Color:
+                rgba: app.bg_card
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [dp(14)]
+            Color:
+                rgba: 0.29, 0.87, 0.5, 1
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, dp(14))
+                width: dp(1.5)
+
+        Label:
+            text: root.title_text
+            font_name: TITLE_FONT
+            color: app.text_dark
+            bold: True
+            font_size: "17sp"
+            halign: "left"
+            valign: "middle"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        Label:
+            text: root.body_text
+            color: app.text_dark
+            font_size: "13sp"
+            halign: "left"
+            valign: "top"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        Label:
+            text: root.progress_text
+            color: app.muted
+            font_size: "10sp"
+            halign: "left"
+            size_hint_y: None
+            height: dp(14)
+            text_size: self.width, None
+
+        BoxLayout:
+            size_hint_y: None
+            height: dp(40)
+            spacing: dp(8)
+
+            ClayButton:
+                text: app.language and (app.t('btn_back'))
+                bg_color: app.bg_card_soft
+                text_color: app.muted
+                size_hint_x: None
+                width: dp(78) if not root.is_first else 0
+                opacity: 0 if root.is_first else 1
+                disabled: root.is_first
+                on_release: app.tutorial_back()
+
+            ClayButton:
+                text: app.language and (app.t('btn_skip'))
+                bg_color: app.bg_card_soft
+                text_color: app.muted
+                size_hint_x: None
+                width: dp(70) if not root.is_last else 0
+                opacity: 0 if root.is_last else 1
+                disabled: root.is_last
+                on_release: app.tutorial_skip()
+
+            ClayButton:
+                text: app.language and (app.t('btn_finish') if root.is_last else app.t('btn_next'))
+                bg_color: app.accent
+                on_release: app.tutorial_next()
+
+
+BoxLayout:
+    orientation: "vertical"
+    canvas.before:
+        Color:
+            rgba: app.bg_app
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # cabeçalho — banner de fundo (BannerArt, ver banners.py) + avatar/nome.
+    # Toque no avatar abre a tela de personalização de perfil. Ajustes é aba
+    # da barra de baixo. Some durante splash/onboarding.
+    FloatLayout:
+        size_hint_y: None
+        height: 0 if (app.current_screen,) and app.is_onboarding_screen() else (dp(64) if app.equipped_title else dp(52))
+        opacity: 0 if (app.current_screen,) and app.is_onboarding_screen() else 1
+        disabled: (app.current_screen,) and app.is_onboarding_screen()
+
+        BannerArt:
+            size_hint: None, None
+            pos: self.parent.pos
+            size: self.parent.size
+            pattern: app.banner_pattern
+            color: app.banner_color
+            edge_divider: True
+            # um tom mais escuro que o destaque do tema, e acompanha a troca de tema
+            divider_color: app.accent[0] * 0.72, app.accent[1] * 0.72, app.accent[2] * 0.72, 1
+
+        BoxLayout:
+            size_hint: None, None
+            pos: self.parent.pos
+            size: self.parent.size
+            padding: dp(12), dp(8)
+            spacing: dp(10)
+
+            TapArea:
+                id: tut_avatar
+                orientation: "horizontal"
+                spacing: dp(6)
+                on_release: app.open_profile_screen()
+
+                BoxLayout:
+                    size_hint: None, None
+                    size: dp(32), dp(32)
+                    canvas.before:
+                        Color:
+                            rgba: app.accent_soft
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [dp(7)]
+
+                    # Widget "burro" (sem layout próprio) só pra poder
+                    # sobrepor foto e moldura livremente — BoxLayout nunca
+                    # sobrepõe dois filhos, sempre bota cada um no seu
+                    # próprio "slot" ao lado do outro (mesma solução que o
+                    # BadgeCard já usa pra pose+moldura, ver <BadgeCard@...>).
+                    # SEM padding aqui (era do BoxLayout antigo, só pra
+                    # empurrar a foto): este Widget cobre o dp(32) INTEIRO —
+                    # é a moldura equipada que precisa da área cheia, pra
+                    # ficar bem em cima do "anel" desenhado acima
+                    # (accent_soft), não só por cima da fotinho de dentro.
+                    Widget:
+                        Image:
+                            source: (app.profile_avatar, app.profile_photo_path) and app.current_avatar_path()
+                            # inset manual de dp(3) (era padding do BoxLayout
+                            # antigo) — só a FOTO fica encolhida assim; a
+                            # moldura, logo abaixo, cobre o Widget inteiro.
+                            pos: self.parent.x + dp(3), self.parent.y + dp(3)
+                            size: self.parent.width - dp(6), self.parent.height - dp(6)
+                            allow_stretch: True
+                            keep_ratio: True  # a foto enviada já vem quadrada (ImageOps.fit em _prepare_photo);
+                            # as poses do Focum também são quadradas, então não distorce
+                            # o Image em si é um RETÂNGULO reto — sem clipar, os 4 cantos dele
+                            # apareciam por cima dos cantos arredondados do fundo. O stencil
+                            # abaixo corta o desenho da foto na mesma forma arredondada.
+                            canvas.before:
+                                StencilPush
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [dp(5)]
+                                StencilUse
+                            canvas.after:
+                                StencilUnUse
+                                RoundedRectangle:
+                                    pos: self.pos
+                                    size: self.size
+                                    radius: [dp(5)]
+                                StencilPop
+
+                        # moldura decorativa equipada (Loja de Recompensas/
+                        # marcos — ver mascot.FRAMES), arte de verdade por
+                        # cima da foto (listada depois dela = desenha por
+                        # cima). Cobre o Widget INTEIRO (dp(32), sem inset) —
+                        # mesmo lugar de antes do anel colorido (Line
+                        # desenhada com self.x/y/width/height do BoxLayout de
+                        # fora, que padding nenhum encolhia). "" quando
+                        # "none"/arquivo ausente colapsa o tamanho — source
+                        # vazio pintaria retângulo branco (textura None +
+                        # Color branco), não fica invisível sozinho (ver
+                        # App.current_frame_path).
+                        Image:
+                            source: (app.profile_frame,) and app.current_frame_path()
+                            # algumas molduras pedem um scale > 1.0 (ver
+                            # mascot.FRAMES / App.current_frame_scale) — cresce
+                            # centralizado, nunca só pra um lado
+                            size: [s * ((app.profile_frame,) and app.current_frame_scale()) for s in self.parent.size] if ((app.profile_frame,) and app.current_frame_path()) else (0, 0)
+                            pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2
+                            allow_stretch: True
+                            keep_ratio: False
+
+                BoxLayout:
+                    orientation: "vertical"
+
+                    Label:
+                        text: app.account_name if app.has_account else "Discipliner"
+                        font_name: TITLE_FONT
+                        color: app.text_dark
+                        bold: True
+                        font_size: FS_TITLE
+                        halign: "left"
+                        valign: "middle" if not app.equipped_title else "bottom"
+                        text_size: self.size
+                        shorten: True
+
+                    # título equipado (emblema escolhido em Emblemas > detalhes) —
+                    # some quando nenhum está equipado, sem tirar espaço do nome
+                    Label:
+                        text: app.equipped_title and app.t(f"badge_{app.equipped_title}_name")
+                        color: app.accent
+                        bold: True
+                        font_size: FS_CAPTION
+                        size_hint_y: None
+                        height: dp(14) if app.equipped_title else 0
+                        halign: "left"
+                        valign: "top"
+                        text_size: self.size
+                        shorten: True
+
+                Label:
+                    text: ">"
+                    color: app.muted
+                    bold: True
+                    font_size: "14sp"
+                    size_hint_x: None
+                    width: dp(12)
+                    valign: "middle"
+                    text_size: self.size
+
+    ScreenManager:
+        id: screen_manager
+        # slide curto (0.13s) no lugar dos 0.4s padrão. Causa de "os botões são
+        # clicados mas raramente processam o clique": ScreenManager.on_touch_down
+        # retorna False enquanto transition.is_active, então durante o slide todo
+        # toque num botão da tela nova sumia sem feedback — 0.4s é uma janela
+        # morta enorme depois de cada navegação (agora ~130ms, dentro do tempo
+        # de reação de quem troca de aba e olha antes de tocar). NoTransition()
+        # zeraria a janela de vez; mantido o slide curto por ser o caminho
+        # testado do Kivy. Ver test_nav_taps.py.
+        transition: SlideTransition(duration=0.13)
+
+        Screen:
+            name: "splash"
+            canvas.before:
+                Color:
+                    rgba: app.bg_app
+                Rectangle:
+                    pos: self.pos
+                    size: self.size
+
+            # GIF animado do ícone (o presplash nativo continua PNG estático).
+            # anim_loop 0 = loop enquanto o splash está na tela; corte ping-pong,
+            # emenda sem pulo. anim_delay 0.1 = 10 fps (bate com o GIF); o padrão
+            # do Kivy é 0.25 = 4 fps, travado.
+            # pos explícito (não pos_hint): com pos_hint o Kivy tava ignorando o
+            # `size` do Image e ele enchia a tela toda.
+            Image:
+                id: splash_icon
+                source: "assets/focum/focum_intro.gif"
+                anim_loop: 0
+                anim_delay: 0.1
+                size_hint: None, None
+                size: dp(200), dp(200)
+                pos: self.parent.center_x - self.width / 2, self.parent.center_y - self.height / 2 + dp(60)
+                allow_stretch: True
+                keep_ratio: True
+
+            # título do splash: bem maior que FS_DISPLAY (28sp) e na cor de
+            # destaque, com um "sombreado" barato — o mesmo texto atrás,
+            # deslocado e escuro, dá profundidade sem precisar de fonte nova
+            Label:
+                text: "Discipliner"
+                font_name: SPLASH_FONT
+                color: 0, 0, 0, 0.35
+                opacity: splash_icon.opacity
+                font_size: "46sp"
+                size_hint: None, None
+                size: self.texture_size
+                pos_hint: {"center_x": 0.503, "center_y": 0.353}
+
+            Label:
+                text: "Discipliner"
+                # Lilita One (embutida, ver main.SPLASH_FONT) — já é gorda,
+                # sem negrito falso por cima
+                font_name: SPLASH_FONT
+                # entra e sai junto com o GIF (App._play_splash anima só o
+                # splash_icon; o título copia a opacidade dele)
+                opacity: splash_icon.opacity
+                # sempre branco: a marca não muda com o tema de cor escolhido
+                color: 1, 1, 1, 1
+                font_size: "46sp"
+                size_hint: None, None
+                size: self.texture_size
+                pos_hint: {"center_x": 0.5, "center_y": 0.36}
+
+        Screen:
+            name: "missions"
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(10)
+
+                # atalhos em pílula (estilo Spotify) pras telas que não estão
+                # na barra de baixo
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(40)
+                    spacing: dp(8)
+
+                    ChipButton:
+                        text: app.language and (app.t('streaks_title'))
+                        on_release: app.open_streaks_screen()
+
+                    # substitui o antigo botão "Loja · N pontos" (mesma função,
+                    # duplicado): os pontos continuam à vista aqui. O id é o
+                    # alvo do passo "rewards" do tutorial (main.TUTORIAL_STEPS)
+                    ChipButton:
+                        id: tut_rewards_btn
+                        text: (app.available_points,) and app.language and (app.t('btn_rewards_shop') + " · " + str(app.available_points))
+                        on_release: app.switch_screen("rewards_shop")
+
+                    ChipButton:
+                        text: app.language and (app.t('chip_stats'))
+                        on_release: app.open_advanced_stats()
+
+                    Widget:
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(60)
+                    spacing: dp(12)
+
+                    # só mostra os dias: quem leva pra tela de sequências é a
+                    # pílula "Sequências" lá em cima (dois caminhos pro mesmo lugar)
+                    ClayCard:
+                        id: tut_streak_card
+                        bg_color: app.accent_soft
+                        orientation: "vertical"
+                        padding: dp(8), dp(8), dp(8), dp(10)
+                        Label:
+                            # sequência do tipo da aba ativa (dias / semanas / meses)
+                            text: app.language and (app.mission_view, app.streak, app.streak_semanal, app.streak_mensal) and ((str(app.streak) + " " + (app.t('streak_day') if app.streak == 1 else app.t('streak_days'))) if app.mission_view == "diaria" else (str(app.streak_for_tab(app.mission_view)) + " " + app.streak_unit_label(app.mission_view).capitalize()))
+                            color: app.text_dark
+                            bold: True
+                            font_size: FS_HEADING
+                        Label:
+                            text: app.language and (app.t('streak_label'))
+                            color: app.muted
+                            font_size: FS_CAPTION
+
+                    ClayCard:
+                        id: tut_level_card
+                        bg_color: app.accent_soft
+                        orientation: "vertical"
+                        padding: dp(8)
+                        Label:
+                            text: app.language and (app.t('level_prefix') + " " + str(app.level))
+                            color: app.text_dark
+                            bold: True
+                            font_size: FS_HEADING
+                        Label:
+                            text: str(app.xp_in_level) + "/" + str(app.xp_for_next) + " XP"
+                            color: app.muted
+                            font_size: FS_CAPTION
+
+                # cabeçalho clicável: recolhe a lista de recompensas de nível
+                # pra sobrar tela pras missões (estado guardado em app_settings)
+                TapArea:
+                    size_hint_y: None
+                    height: dp(26)
+                    spacing: dp(6)
+                    on_release: app.toggle_level_rewards()
+
+                    # pos_hint centraliza no eixo transversal do BoxLayout — o
+                    # FieldLabel tem altura própria (size_hint_y None) e sem
+                    # isso ficaria colado embaixo da faixa clicável
+                    SectionLabel:
+                        text: app.language and (app.t('level_rewards_title')).upper()
+                        valign: "middle"
+                        pos_hint: {"center_y": 0.5}
+
+                    # ">" girado, e não um triangulinho do bloco Geometric
+                    # Shapes: a fonte padrão do Android (Roboto) não tem esses
+                    # glifos e eles saíam como quadradinho vazio no aparelho.
+                    # ">" é ASCII, está em qualquer fonte, e girar -90° faz
+                    # apontar pra baixo. Ver test_theme.run_glyphs.
+                    Label:
+                        text: ">"
+                        color: app.muted
+                        bold: True
+                        font_size: "12sp"
+                        size_hint_x: None
+                        width: dp(16)
+                        halign: "center"
+                        valign: "middle"
+                        text_size: self.size
+                        canvas.before:
+                            PushMatrix
+                            Rotate:
+                                angle: -90 if app.level_rewards_open else 0
+                                origin: self.center
+                        canvas.after:
+                            PopMatrix
+
+                ScrollView:
+                    size_hint_y: None
+                    height: dp(120) if app.level_rewards_open else 0
+                    opacity: 1 if app.level_rewards_open else 0
+                    disabled: not app.level_rewards_open
+                    do_scroll_y: False
+                    GridLayout:
+                        id: level_rewards_list
+                        rows: 1
+                        spacing: dp(8)
+                        size_hint_x: None
+                        width: self.minimum_width
+
+                Label:
+                    id: tut_freeze_label
+                    text: (app.streak_freezes_left,) and app.language and app.freeze_status_text()
+                    color: app.success if app.streak_freeze_available else app.muted
+                    font_size: FS_CAPTION
+                    size_hint_y: None
+                    height: dp(16)
+
+                # abas do tipo de missão: troca lista, progresso e sequência
+                # pro tipo escolhido (App.set_mission_view). Linha separada dos
+                # atalhos lá de cima de propósito
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(40)
+                    spacing: dp(8)
+
+                    ClayButton:
+                        text: app.language and (app.t('chip_daily'))
+                        bg_color: app.accent if app.mission_view == "diaria" else app.accent_soft
+                        text_color: app.text_light if app.mission_view == "diaria" else app.text_dark
+                        on_release: app.set_mission_view("diaria")
+
+                    ClayButton:
+                        text: app.language and (app.t('chip_weekly'))
+                        bg_color: app.accent if app.mission_view == "semanal" else app.accent_soft
+                        text_color: app.text_light if app.mission_view == "semanal" else app.text_dark
+                        on_release: app.set_mission_view("semanal")
+
+                    ClayButton:
+                        text: app.language and (app.t('chip_monthly'))
+                        bg_color: app.accent if app.mission_view == "mensal" else app.accent_soft
+                        text_color: app.text_light if app.mission_view == "mensal" else app.text_dark
+                        on_release: app.set_mission_view("mensal")
+
+                ClayProgressBar:
+                    id: tut_progress_bar
+                    value: app.progress
+
+                SectionLabel:
+                    text: app.language and (app.t('progress_label') + " " + str(int(app.progress * 100)) + "%").upper()
+                    height: dp(20)
+
+                Label:
+                    text: app.language and (app.t('missions_period_empty'))
+                    color: app.muted
+                    font_size: FS_CAPTION
+                    halign: "center"
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: dp(30) if app.missions_empty else 0
+                    opacity: 1 if app.missions_empty else 0
+
+                ScrollView:
+                    id: tut_missions_list
+                    GridLayout:
+                        id: missions_list
+                        cols: 1
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: dp(48)
+                    spacing: dp(8)
+
+                    ClayButton:
+                        id: tut_add_mission
+                        text: app.language and (app.t('add_mission_button'))
+                        bg_color: app.accent
+                        # já abre no tipo da aba ativa
+                        on_release: app.open_add_popup(app.mission_view)
+
+                    ClayButton:
+                        id: tut_suggestions
+                        text: app.language and (app.t('btn_suggestions'))
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        size_hint_x: None
+                        width: dp(110)
+                        on_release: app.open_suggestions_popup()
+
+                    ClayButton:
+                        text: app.language and (app.t('btn_challenges'))
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        size_hint_x: None
+                        width: dp(100)
+                        on_release: app.open_challenges_popup()
+
+        Screen:
+            name: "history"
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(10)
+
+                BoxLayout:
+                    orientation: "vertical"
+                    spacing: dp(10)
+                    padding: dp(20), dp(20)
+                    opacity: 1 if app.history_empty else 0
+                    disabled: not app.history_empty
+                    size_hint_y: None
+                    # altura calculada pelo próprio conteúdo (nunca corta) em vez de
+                    # um número fixo que já ficou pequeno demais pro conteúdo uma vez
+                    height: self.minimum_height if app.history_empty else 0
+
+                    Image:
+                        source: app.sleeping_mascot_path()
+                        allow_stretch: True
+                        keep_ratio: True
+                        size_hint_y: None
+                        height: dp(130)
+
+                    Label:
+                        text: app.language and (app.t('history_empty_title'))
+                        color: app.text_dark
+                        bold: True
+                        font_size: "16sp"
+                        size_hint_y: None
+                        height: dp(24)
+
+                    Label:
+                        text: app.language and (app.t('history_empty_message'))
+                        color: app.muted
+                        font_size: "12sp"
+                        halign: "center"
+                        valign: "top"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: dp(50)
+
+                ScrollView:
+                    GridLayout:
+                        id: history_list
+                        cols: 1
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+        Screen:
+            name: "chart"
+            # AnchorLayout + BoxLayout com altura própria (não a tela toda) —
+            # só 1 dos 3 cartões de gráfico fica visível por vez (os outros
+            # ficam com altura 0), então o conteúdo raramente enche a tela
+            # inteira; sem isso, ele ficava "colado" no topo com um vão vazio
+            # embaixo em vez de centralizado
+            AnchorLayout:
+                anchor_y: "center"
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint: 1, None
+                    height: self.minimum_height
+                    padding: dp(16)
+                    spacing: dp(12)
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(64)
+                        spacing: dp(12)
+
+                        ClayCard:
+                            bg_color: app.accent_soft
+                            orientation: "vertical"
+                            padding: dp(8)
+                            Label:
+                                text: app.month_label
+                                color: app.text_dark
+                                bold: True
+                                font_size: "13sp"
+                            Label:
+                                text: app.language and (app.t('chart_month_label'))
+                                color: app.muted
+                                font_size: "11sp"
+
+                        ClayCard:
+                            bg_color: app.accent_soft
+                            orientation: "vertical"
+                            padding: dp(8)
+                            Label:
+                                text: str(app.total_points)
+                                color: app.text_dark
+                                bold: True
+                                font_size: "18sp"
+                            Label:
+                                text: app.language and (app.t('chart_points_label'))
+                                color: app.muted
+                                font_size: "11sp"
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(44)
+                        spacing: dp(8)
+
+                        ClayButton:
+                            text: app.language and (app.t('chart_type_heatmap'))
+                            bg_color: app.accent if app.chart_type == "heatmap" else app.accent_soft
+                            text_color: app.text_light if app.chart_type == "heatmap" else app.text_dark
+                            on_release: app.set_chart_type("heatmap")
+
+                        ClayButton:
+                            text: app.language and (app.t('chart_type_bars'))
+                            bg_color: app.accent if app.chart_type == "bars" else app.accent_soft
+                            text_color: app.text_light if app.chart_type == "bars" else app.text_dark
+                            on_release: app.set_chart_type("bars")
+
+                        ClayButton:
+                            text: app.language and (app.t('chart_type_lines'))
+                            bg_color: app.accent if app.chart_type == "lines" else app.accent_soft
+                            text_color: app.text_light if app.chart_type == "lines" else app.text_dark
+                            on_release: app.set_chart_type("lines")
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        padding: dp(14)
+                        size_hint_y: None
+                        height: dp(320) if app.chart_type == "heatmap" else 0
+                        opacity: 1 if app.chart_type == "heatmap" else 0
+                        disabled: app.chart_type != "heatmap"
+                        HeatmapCalendar:
+                            id: heatmap_calendar
+                            base_color: app.bg_card
+                            accent_color: app.accent
+                            text_dark: app.text_dark
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        padding: dp(14)
+                        size_hint_y: None
+                        height: dp(320) if app.chart_type == "bars" else 0
+                        opacity: 1 if app.chart_type == "bars" else 0
+                        disabled: app.chart_type != "bars"
+                        BarChart:
+                            id: bar_chart
+                            grid_color: app.bg_card
+                            accent_color: app.accent
+                            text_dark: app.text_dark
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        padding: dp(14)
+                        size_hint_y: None
+                        height: dp(320) if app.chart_type == "lines" else 0
+                        opacity: 1 if app.chart_type == "lines" else 0
+                        disabled: app.chart_type != "lines"
+                        LineChart:
+                            id: line_chart
+                            grid_color: app.bg_card
+                            accent_color: app.accent
+                            text_dark: app.text_dark
+
+                    ClayButton:
+                        text: app.language and (app.t('chart_refresh_button'))
+                        bg_color: app.accent
+                        size_hint_y: None
+                        height: dp(48)
+                        on_release: app.refresh_chart()
+
+        Screen:
+            name: "rewards_shop"
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(10)
+
+                Label:
+                    text: app.language and (app.t('rewards_shop_title'))
+                    color: app.text_dark
+                    bold: True
+                    font_size: "20sp"
+                    size_hint_y: None
+                    height: dp(30)
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+
+                ClayCard:
+                    bg_color: app.accent_soft
+                    orientation: "vertical"
+                    padding: dp(10)
+                    size_hint_y: None
+                    height: dp(56)
+
+                    Label:
+                        text: str(app.available_points)
+                        color: app.text_dark
+                        bold: True
+                        font_size: "20sp"
+                    Label:
+                        text: app.language and (app.t('rewards_available_points'))
+                        color: app.muted
+                        font_size: "11sp"
+
+                ClayButton:
+                    text: app.language and ("+ " + app.t('reward_form_new_title'))
+                    bg_color: app.accent
+                    size_hint_y: None
+                    height: dp(44)
+                    on_release: app.open_add_reward_popup()
+
+                Label:
+                    text: app.language and (app.t('rewards_empty_note'))
+                    color: app.muted
+                    font_size: "12sp"
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.width, None
+                    size_hint_y: None
+                    height: (self.texture_size[1] + dp(8)) if not rewards_list.children else 0
+
+                ScrollView:
+                    size_hint_y: None
+                    height: self.parent.height * 0.4
+                    GridLayout:
+                        id: rewards_list
+                        cols: 1
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                FieldLabel:
+                    text: app.language and (app.t('reward_history_title'))
+
+                ScrollView:
+                    GridLayout:
+                        id: reward_history_list
+                        cols: 1
+                        spacing: dp(6)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+        Screen:
+            name: "badges"
+            BoxLayout:
+                orientation: "vertical"
+                padding: dp(16)
+                spacing: dp(10)
+
+                Label:
+                    text: app.language and (app.t('badges_title'))
+                    color: app.text_dark
+                    bold: True
+                    font_size: "20sp"
+                    size_hint_y: None
+                    height: dp(30)
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.size
+
+                ScrollView:
+                    GridLayout:
+                        id: badges_list
+                        cols: 2
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+        # personalização de perfil — abre ao tocar no avatar do cabeçalho
+        # (app.open_profile_screen). Sem aba na barra: volta pelo "<" ou pelo
+        # botão voltar do Android. As 4 listas são montadas por
+        # main._build_profile_pickers ao entrar na tela.
+        Screen:
+            name: "profile"
+            ScrollView:
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: dp(16)
+                    spacing: dp(14)
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(38)
+                        spacing: dp(8)
+
+                        ClayButton:
+                            text: "<"
+                            bg_color: app.bg_card
+                            text_color: app.text_dark
+                            size_hint_x: None
+                            width: dp(44)
+                            on_release: app.switch_screen("missions")
+
+                        Label:
+                            text: app.language and (app.t('profile_title'))
+                            color: app.text_dark
+                            bold: True
+                            font_size: FS_TITLE
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+
+                    # ---- BANNER ----
+                    SectionLabel:
+                        text: app.language and (app.t('banner_label')).upper()
+
+                    # grade 3 col: alvos de toque grandes (dp96x52). Era uma
+                    # linha só de miniaturas dp48x34 — pequenas demais, "os
+                    # botões do banner clicam raramente".
+                    GridLayout:
+                        id: prof_banner_list
+                        cols: 3
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: dp(8)
+                        padding: 0, dp(2)
+
+                    ClayButton:
+                        text: app.language and (app.t('banner_custom_label'))
+                        bg_color: app.accent if (app.is_premium and app.profile_banner == "custom") else app.bg_card
+                        text_color: app.text_light if (app.is_premium and app.profile_banner == "custom") else app.muted
+                        disabled: not app.is_premium
+                        size_hint_y: None
+                        height: dp(40)
+                        on_release: app.set_profile_banner("custom")
+
+                    Label:
+                        text: app.language and (app.t('premium_locked_note'))
+                        color: app.muted
+                        font_size: FS_CAPTION
+                        size_hint_y: None
+                        height: dp(24) if not app.is_premium else 0
+                        opacity: 1 if not app.is_premium else 0
+                        halign: "left"
+                        valign: "top"
+                        text_size: self.width, None
+
+                    # painel do banner personalizado — some quando não é Premium
+                    # ou o banner escolhido não é "custom". CADA filho de altura
+                    # fixa também zera quando escondido: senão o Kivy mantém
+                    # AnchorLayout/roda com a altura antiga por cima da grade de
+                    # banners e a roda engole o toque nos thumbs ("os botões do
+                    # banner clicam raramente"). Mesmo bug já visto no avatar_list.
+                    BoxLayout:
+                        orientation: "vertical"
+                        spacing: dp(6) if (app.is_premium and app.profile_banner == "custom") else 0
+                        size_hint_y: None
+                        height: self.minimum_height if (app.is_premium and app.profile_banner == "custom") else 0
+                        opacity: 1 if (app.is_premium and app.profile_banner == "custom") else 0
+                        disabled: not (app.is_premium and app.profile_banner == "custom")
+
+                        AnchorLayout:
+                            size_hint_y: None
+                            height: dp(190) if (app.is_premium and app.profile_banner == "custom") else 0
+
+                            AccentColorWheel:
+                                size_hint: None, None
+                                size: (dp(180), dp(180)) if (app.is_premium and app.profile_banner == "custom") else (0, 0)
+                                hue: app.custom_banner_hue
+                                sat: app.custom_banner_sat
+                                on_pick: app.pick_custom_banner(args[1], args[2])
+
+                        FieldLabel:
+                            text: app.language and (app.t('banner_pattern_label'))
+                            height: (max(dp(18), self.texture_size[1])) if (app.is_premium and app.profile_banner == "custom") else 0
+
+                        GridLayout:
+                            cols: 3
+                            spacing: dp(6)
+                            size_hint_y: None
+                            height: self.minimum_height if (app.is_premium and app.profile_banner == "custom") else 0
+
+                            ClayButton:
+                                text: app.language and (app.t('pattern_solid'))
+                                bg_color: app.accent if app.custom_banner_pattern == "solid" else app.bg_card
+                                text_color: app.text_light if app.custom_banner_pattern == "solid" else app.text_dark
+                                size_hint_y: None
+                                height: dp(38)
+                                on_release: app.set_custom_banner_pattern("solid")
+                            ClayButton:
+                                text: app.language and (app.t('pattern_gradient'))
+                                bg_color: app.accent if app.custom_banner_pattern == "gradient" else app.bg_card
+                                text_color: app.text_light if app.custom_banner_pattern == "gradient" else app.text_dark
+                                size_hint_y: None
+                                height: dp(38)
+                                on_release: app.set_custom_banner_pattern("gradient")
+                            ClayButton:
+                                text: app.language and (app.t('pattern_stripes'))
+                                bg_color: app.accent if app.custom_banner_pattern == "stripes" else app.bg_card
+                                text_color: app.text_light if app.custom_banner_pattern == "stripes" else app.text_dark
+                                size_hint_y: None
+                                height: dp(38)
+                                on_release: app.set_custom_banner_pattern("stripes")
+                            ClayButton:
+                                text: app.language and (app.t('pattern_dots'))
+                                bg_color: app.accent if app.custom_banner_pattern == "dots" else app.bg_card
+                                text_color: app.text_light if app.custom_banner_pattern == "dots" else app.text_dark
+                                size_hint_y: None
+                                height: dp(38)
+                                on_release: app.set_custom_banner_pattern("dots")
+                            ClayButton:
+                                text: app.language and (app.t('pattern_grid'))
+                                bg_color: app.accent if app.custom_banner_pattern == "grid" else app.bg_card
+                                text_color: app.text_light if app.custom_banner_pattern == "grid" else app.text_dark
+                                size_hint_y: None
+                                height: dp(38)
+                                on_release: app.set_custom_banner_pattern("grid")
+                            ClayButton:
+                                text: app.language and (app.t('pattern_chevron'))
+                                bg_color: app.accent if app.custom_banner_pattern == "chevron" else app.bg_card
+                                text_color: app.text_light if app.custom_banner_pattern == "chevron" else app.text_dark
+                                size_hint_y: None
+                                height: dp(38)
+                                on_release: app.set_custom_banner_pattern("chevron")
+
+                    # ---- FOTO DE PERFIL ----
+                    SectionLabel:
+                        text: app.language and (app.t('avatar_label')).upper()
+
+                    ClayButton:
+                        text: app.language and (app.t('upload_photo_label'))
+                        bg_color: app.accent if app.is_premium else app.bg_card
+                        text_color: app.text_light if app.is_premium else app.muted
+                        disabled: not app.is_premium
+                        size_hint_y: None
+                        height: dp(42)
+                        on_release: app.upload_profile_photo()
+
+                    Label:
+                        text: app.language and app.photo_formats_text()
+                        color: app.muted
+                        font_size: "9sp"
+                        size_hint_y: None
+                        height: dp(13)
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.width, None
+
+                    Label:
+                        text: app.photo_status
+                        color: app.danger
+                        font_size: FS_CAPTION
+                        size_hint_y: None
+                        height: dp(24) if app.photo_status else 0
+                        opacity: 1 if app.photo_status else 0
+                        halign: "left"
+                        valign: "top"
+                        text_size: self.width, None
+
+                    GridLayout:
+                        id: prof_avatar_list
+                        cols: 4
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                    # ---- MOLDURA ----
+                    SectionLabel:
+                        text: app.language and (app.t('frame_label')).upper()
+
+                    BoxLayout:
+                        id: prof_frame_list
+                        size_hint_y: None
+                        height: dp(44)
+                        spacing: dp(8)
+
+                    # ---- ÍCONE DO APP ----
+                    SectionLabel:
+                        text: app.language and (app.t('app_icon_label')).upper()
+
+                    BoxLayout:
+                        id: prof_icon_list
+                        size_hint_y: None
+                        height: dp(44)
+                        spacing: dp(8)
+
+        Screen:
+            name: "streaks"
+            ScrollView:
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: dp(16)
+                    spacing: dp(12)
+
+                    Label:
+                        text: app.language and (app.t('streaks_title'))
+                        color: app.text_dark
+                        bold: True
+                        font_size: "20sp"
+                        size_hint_y: None
+                        height: dp(30)
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+    
+                    BoxLayout:
+                        size_hint_y: None
+                        height: dp(44)
+                        spacing: dp(8)
+    
+                        ClayButton:
+                            text: app.language and (app.periodicity_tab_label("diaria"))
+                            bg_color: app.accent if app.streak_tab == "diaria" else app.accent_soft
+                            text_color: app.text_light if app.streak_tab == "diaria" else app.text_dark
+                            on_release: app.switch_streak_tab("diaria")
+    
+                        ClayButton:
+                            text: app.language and (app.periodicity_tab_label("semanal"))
+                            bg_color: app.accent if app.streak_tab == "semanal" else app.accent_soft
+                            text_color: app.text_light if app.streak_tab == "semanal" else app.text_dark
+                            on_release: app.switch_streak_tab("semanal")
+    
+                        ClayButton:
+                            text: app.language and (app.periodicity_tab_label("mensal"))
+                            bg_color: app.accent if app.streak_tab == "mensal" else app.accent_soft
+                            text_color: app.text_light if app.streak_tab == "mensal" else app.text_dark
+                            on_release: app.switch_streak_tab("mensal")
+    
+                    ClayCard:
+                        bg_color: app.accent_soft
+                        orientation: "vertical"
+                        padding: dp(18)
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: dp(120)
+    
+                        Label:
+                            text: app.language and (app.t('streak_current_label'))
+                            color: app.text_dark
+                            bold: True
+                            font_size: "12sp"
+                            size_hint_y: None
+                            height: dp(18)
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+    
+                        Label:
+                            text: app.language and (app.streak, app.streak_semanal, app.streak_mensal) and (str(app.streak_for_tab(app.streak_tab)) + " " + app.streak_unit_label(app.streak_tab))
+                            color: app.text_dark
+                            bold: True
+                            font_size: "34sp"
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+    
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: self.minimum_height
+    
+                        FieldLabel:
+                            text: app.language and (app.t('streak_multiplier_label'))
+    
+                        Label:
+                            text: app.language and (app.streak, app.streak_semanal, app.streak_mensal) and (str(app.streak_multiplier_for_tab(app.streak_tab)) + "x")
+                            color: app.accent
+                            bold: True
+                            font_size: "22sp"
+                            size_hint_y: None
+                            height: dp(30)
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+    
+                        Label:
+                            text: app.language and (app.streak, app.streak_semanal, app.streak_mensal) and (app.streak_next_tier_text(app.streak_tab))
+                            color: app.muted
+                            font_size: "11sp"
+                            size_hint_y: None
+                            height: dp(18)
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+
+                        # bônus PERMANENTE (ver missions.permanent_bonus) — some
+                        # (height 0) sem nenhum marco batido ainda, ao contrário
+                        # da linha de cima que sempre mostra algo
+                        Label:
+                            text: app.language and (app.permanent_bonus_pct,) and (app.permanent_bonus_text())
+                            color: app.success
+                            bold: True
+                            font_size: "11sp"
+                            size_hint_y: None
+                            height: dp(18) if app.permanent_bonus_pct else 0
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "horizontal"
+                        padding: dp(14)
+                        size_hint_y: None
+                        height: dp(56)
+    
+                        Label:
+                            text: app.language and (app.t('streak_best_label'))
+                            color: app.muted
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+    
+                        Label:
+                            text: app.language and (app.best_streak, app.best_streak_semanal, app.best_streak_mensal) and (str(app.best_streak_for_tab(app.streak_tab)) + " " + app.streak_unit_label(app.streak_tab))
+                            color: app.text_dark
+                            bold: True
+                            halign: "right"
+                            valign: "middle"
+                            text_size: self.size
+    
+                    Label:
+                        text: app.language and (app.t('streak_freeze_note_short'))
+                        color: app.muted
+                        font_size: "10sp"
+                        halign: "center"
+                        valign: "top"
+                        text_size: self.width, None
+                        size_hint_y: None
+                        height: dp(30) if app.streak_tab == "diaria" else 0
+                        opacity: 1 if app.streak_tab == "diaria" else 0
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "horizontal"
+                        padding: dp(12)
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: dp(56)
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            Label:
+                                text: app.language and (app.t('weekly_summary_title'))
+                                color: app.muted
+                                font_size: "10sp"
+                                bold: True
+                                halign: "left"
+                                valign: "top"
+                                text_size: self.size
+                            Label:
+                                text: (app.language and (str(app.weekly_points) + " " + app.points_word(app.weekly_points) + " " + app.t('weekly_points_label')))
+                                color: app.text_dark
+                                bold: True
+                                font_size: "15sp"
+                                halign: "left"
+                                valign: "bottom"
+                                text_size: self.size
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_x: None
+                            width: dp(84)
+                            Label:
+                                text: ("+" if app.weekly_change_pct >= 0 else "") + str(app.weekly_change_pct) + "%"
+                                color: app.success if app.weekly_change_pct >= 0 else app.danger
+                                bold: True
+                                font_size: "15sp"
+                            Label:
+                                text: app.language and (app.t('weekly_vs_last'))
+                                color: app.muted
+                                font_size: "9sp"
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_x: None
+                            width: dp(64)
+                            Label:
+                                text: app.weekly_best_day if app.weekly_best_day else "—"
+                                color: app.text_dark
+                                bold: True
+                                font_size: "15sp"
+                            Label:
+                                text: app.language and (app.t('weekly_best_day_label'))
+                                color: app.muted
+                                font_size: "9sp"
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "horizontal"
+                        padding: dp(12)
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: dp(56)
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            Label:
+                                text: app.language and (app.t('monthly_summary_title'))
+                                color: app.muted
+                                font_size: "10sp"
+                                bold: True
+                                halign: "left"
+                                valign: "top"
+                                text_size: self.size
+                            Label:
+                                text: (app.language and (str(app.monthly_points) + " " + app.points_word(app.monthly_points) + " " + app.t('monthly_points_label')))
+                                color: app.text_dark
+                                bold: True
+                                font_size: "15sp"
+                                halign: "left"
+                                valign: "bottom"
+                                text_size: self.size
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_x: None
+                            width: dp(84)
+                            Label:
+                                text: ("+" if app.monthly_change_pct >= 0 else "") + str(app.monthly_change_pct) + "%"
+                                color: app.success if app.monthly_change_pct >= 0 else app.danger
+                                bold: True
+                                font_size: "15sp"
+                            Label:
+                                text: app.language and (app.t('monthly_vs_last'))
+                                color: app.muted
+                                font_size: "9sp"
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            size_hint_x: None
+                            width: dp(64)
+                            Label:
+                                text: app.monthly_best_day if app.monthly_best_day else "—"
+                                color: app.text_dark
+                                bold: True
+                                font_size: "15sp"
+                            Label:
+                                text: app.language and (app.t('monthly_best_day_label'))
+                                color: app.muted
+                                font_size: "9sp"
+
+                    ClayButton:
+                        text: app.language and (app.t('btn_advanced_stats'))
+                        bg_color: app.bg_card_soft
+                        text_color: app.text_dark
+                        size_hint_y: None
+                        height: dp(44)
+                        on_release: app.open_advanced_stats()
+
+                    ClayButton:
+                        text: app.language and (app.t('btn_share_streak'))
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        size_hint_y: None
+                        height: dp(44)
+                        on_release: app.share_streak_card()
+
+                    Label:
+                        text: app.share_status
+                        color: app.success
+                        bold: True
+                        font_size: "11sp"
+                        size_hint_y: None
+                        height: dp(16) if app.share_status else 0
+
+        Screen:
+            name: "advanced_stats"
+            ScrollView:
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: dp(16)
+                    spacing: dp(10)
+
+                    Label:
+                        text: app.language and (app.t('advanced_stats_title'))
+                        color: app.text_dark
+                        bold: True
+                        font_size: "20sp"
+                        size_hint_y: None
+                        height: dp(30)
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+
+                    # não é premium: teaser no lugar do conteúdo real
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(6)
+                        size_hint_y: None
+                        height: self.minimum_height if not app.is_premium else 0
+                        opacity: 1 if not app.is_premium else 0
+                        disabled: app.is_premium
+
+                        Label:
+                            text: app.language and (app.t('advanced_stats_locked_note'))
+                            color: app.muted
+                            font_size: "12sp"
+                            halign: "center"
+                            valign: "top"
+                            text_size: self.width, None
+                            size_hint_y: None
+                            height: self.texture_size[1]
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_go_to_settings'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.switch_screen("settings")
+
+                    BoxLayout:
+                        orientation: "vertical"
+                        spacing: dp(10)
+                        size_hint_y: None
+                        height: self.minimum_height if app.is_premium else 0
+                        opacity: 1 if app.is_premium else 0
+                        disabled: not app.is_premium
+
+                        HistorySectionLabel:
+                            text: app.language and (app.t('stats_best_weekday_title'))
+
+                        ClayCard:
+                            bg_color: app.accent_soft
+                            orientation: "vertical"
+                            padding: dp(16)
+                            size_hint_y: None
+                            height: dp(70)
+
+                            Label:
+                                text: app.stats_best_weekday if app.stats_best_weekday else "—"
+                                color: app.text_dark
+                                bold: True
+                                font_size: "22sp"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+
+                            Label:
+                                text: (str(app.stats_best_weekday_points) + " " + app.t('chart_points_label')) if app.stats_best_weekday else ""
+                                color: app.muted
+                                font_size: "11sp"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.size
+
+                        HistorySectionLabel:
+                            text: app.language and (app.t('stats_months_title'))
+
+                        BoxLayout:
+                            id: months_stats_list
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(4)
+
+                        HistorySectionLabel:
+                            text: app.language and (app.t('stats_missions_title'))
+
+                        BoxLayout:
+                            id: missions_stats_list
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(4)
+
+        Screen:
+            name: "settings"
+            ScrollView:
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint_y: None
+                    height: self.minimum_height
+                    padding: dp(16)
+                    spacing: dp(14)
+
+                    Label:
+                        text: app.language and (app.t('settings_title'))
+                        color: app.text_dark
+                        bold: True
+                        font_size: "20sp"
+                        size_hint_y: None
+                        height: dp(30)
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+
+                    ClayButton:
+                        text: app.language and (app.t('btn_review_tutorial'))
+                        bg_color: app.accent_soft
+                        text_color: app.text_dark
+                        size_hint_y: None
+                        height: dp(42)
+                        on_release: app.tutorial_start()
+
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        FieldLabel:
+                            text: app.language and (app.t('field_language'))
+
+                        ClaySpinner:
+                            id: language_spinner
+                            text: app.language_label()
+                            values: app.language_values()
+                            size_hint_y: None
+                            height: dp(42)
+                            on_text: app.set_language_from_label(self.text)
+
+                        FieldLabel:
+                            text: app.language and (app.t('appearance_label'))
+
+                        ClayButton:
+                            text: app.language and (app.t('label_switch_to_light') if app.dark_mode else app.t('label_switch_to_dark'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.toggle_dark_mode()
+
+                        FieldLabel:
+                            text: app.language and (app.t('theme_label'))
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(42)
+                            spacing: dp(6)
+
+                            ClayButton:
+                                text: ("[ " + app.t('theme_coral') + " ]") if app.accent_theme == "coral" else app.t('theme_coral')
+                                bg_color: 0.95, 0.55, 0.30, 1
+                                text_color: app.text_light
+                                on_release: app.set_accent_theme("coral")
+
+                            ClayButton:
+                                text: ("[ " + app.t('theme_oceano') + " ]") if app.accent_theme == "oceano" else app.t('theme_oceano')
+                                bg_color: 0.20, 0.55, 0.75, 1
+                                text_color: app.text_light
+                                on_release: app.set_accent_theme("oceano")
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(42)
+                            spacing: dp(6)
+
+                            ClayButton:
+                                text: ("[ " + app.t('theme_floresta') + " ]") if app.accent_theme == "floresta" else app.t('theme_floresta')
+                                bg_color: 0.30, 0.62, 0.42, 1
+                                text_color: app.text_light
+                                on_release: app.set_accent_theme("floresta")
+
+                            ClayButton:
+                                text: ("[ " + app.t('theme_ameixa') + " ]") if app.accent_theme == "ameixa" else app.t('theme_ameixa')
+                                bg_color: 0.58, 0.36, 0.68, 1
+                                text_color: app.text_light
+                                on_release: app.set_accent_theme("ameixa")
+
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(42)
+                            spacing: dp(6)
+
+                            ClayButton:
+                                text: (app.custom_accent_hue,) and (("[ " + app.t('theme_custom') + " ]") if app.accent_theme == "custom" else app.t('theme_custom'))
+                                bg_color: (app.custom_accent_hue, app.custom_accent_sat) and app.custom_accent_preview()
+                                text_color: app.text_light
+                                disabled: not app.is_premium
+                                on_release: app.set_accent_theme("custom")
+
+                        BoxLayout:
+                            orientation: "vertical"
+                            spacing: dp(4)
+                            size_hint_y: None
+                            height: self.minimum_height if (app.is_premium and app.accent_theme == "custom") else 0
+                            opacity: 1 if (app.is_premium and app.accent_theme == "custom") else 0
+                            disabled: not (app.is_premium and app.accent_theme == "custom")
+
+                            # roda HSV no lugar dos dois sliders: ângulo = matiz,
+                            # raio = saturação (ver widgets.ColorWheel). Mesmos
+                            # dois valores de antes, num controle só.
+                            FieldLabel:
+                                text: app.language and (app.t('custom_color_label'))
+
+                            # colapsa junto com a seção. O size da roda é FIXO:
+                            # sem zerar aqui, a caixa dela continuava com
+                            # 190dp mesmo com a seção em height 0, cobrindo os
+                            # botões de tema logo acima e engolindo o toque.
+                            AnchorLayout:
+                                size_hint_y: None
+                                height: dp(200) if (app.is_premium and app.accent_theme == "custom") else 0
+
+                                AccentColorWheel:
+                                    id: color_wheel
+                                    size_hint: None, None
+                                    size: (dp(190), dp(190)) if (app.is_premium and app.accent_theme == "custom") else (0, 0)
+                                    hue: app.custom_accent_hue
+                                    sat: app.custom_accent_sat
+                                    on_pick: app.pick_custom_accent(args[1], args[2])
+
+                    # aviso: notificações desligadas no sistema -> os lembretes
+                    # não aparecem. Some (altura 0) quando está tudo certo.
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14) if app.notifications_blocked else 0
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height if app.notifications_blocked else 0
+                        opacity: 1 if app.notifications_blocked else 0
+                        disabled: not app.notifications_blocked
+
+                        Label:
+                            text: app.language and (app.t('notif_blocked_title'))
+                            color: app.danger
+                            bold: True
+                            font_size: FS_LABEL
+                            size_hint_y: None
+                            height: self.texture_size[1] if app.notifications_blocked else 0
+                            halign: "left"
+                            valign: "top"
+                            text_size: self.width, None
+
+                        Label:
+                            text: app.language and (app.t('notif_blocked_body'))
+                            color: app.text_dark
+                            font_size: FS_CAPTION
+                            size_hint_y: None
+                            height: self.texture_size[1] if app.notifications_blocked else 0
+                            halign: "left"
+                            valign: "top"
+                            text_size: self.width, None
+
+                        ClayButton:
+                            text: app.language and (app.t('notif_blocked_button'))
+                            bg_color: app.accent
+                            size_hint_y: None
+                            height: dp(42) if app.notifications_blocked else 0
+                            on_release: app.open_notification_settings()
+
+                    ClayCard:
+                        id: tut_reminder_card
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        FieldLabel:
+                            text: app.language and (app.t('reminder_label'))
+
+                        ClayButton:
+                            text: app.language and (app.t('reminder_enable'))
+                            bg_color: app.accent if app.reminder_enabled else app.accent_soft
+                            text_color: app.text_light if app.reminder_enabled else app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.toggle_reminder_enabled()
+
+                        FieldLabel:
+                            text: app.language and (app.t('reminder_time_label'))
+
+                        ClayButton:
+                            text: app.reminder_time
+                            bg_color: app.bg_card
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.escolher_horario_lembrete()
+
+                    # Ciclo pessoal — pra quem tem escala de trabalho rotativa
+                    # (12x36, 24x48...) e o dia de folga não é sempre o mesmo
+                    # dia da semana. Opt-in, 100% desligado por padrão. Ver
+                    # missions._cycle_off_today e o spec em
+                    # docs/superpowers/specs/2026-08-28-ciclo-pessoal-design.md
+                    ClayCard:
+                        id: tut_cycle_card
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        FieldLabel:
+                            text: app.language and (app.t('work_cycle_label'))
+
+                        Label:
+                            text: app.language and (app.t('work_cycle_hint'))
+                            color: app.muted
+                            font_size: "11sp"
+                            halign: "left"
+                            valign: "top"
+                            size_hint_y: None
+                            height: self.texture_size[1]
+                            text_size: self.width, None
+
+                        Widget:
+                            size_hint_y: None
+                            height: dp(6)
+
+                        ClayButton:
+                            text: app.language and (app.t('work_cycle_enable_on') if app.cycle_enabled else app.t('work_cycle_enable_off'))
+                            bg_color: app.accent if app.cycle_enabled else app.accent_soft
+                            text_color: app.text_light if app.cycle_enabled else app.text_dark
+                            size_hint_x: 1 if app.cycle_enabled else 0.7
+                            pos_hint: {} if app.cycle_enabled else {"center_x": 0.5}
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.toggle_work_cycle_enabled()
+
+                        # tudo que só faz sentido com o ciclo ligado vai num
+                        # container SÓ — colapsar cada filho individualmente
+                        # (como era antes) não bastava: o "spacing" do
+                        # BoxLayout de fora soma entre TODO filho, altura 0
+                        # ou não, e com 7 filhos escondidos isso sozinho já
+                        # virava um espaço morto enorme embaixo do botão
+                        BoxLayout:
+                            id: cycle_config_group
+                            orientation: "vertical"
+                            spacing: dp(8)
+                            size_hint_y: None
+                            height: self.minimum_height if app.cycle_enabled else 0
+                            opacity: 1 if app.cycle_enabled else 0
+                            disabled: not app.cycle_enabled
+
+                            # cada filho AQUI DENTRO também condiciona a própria
+                            # altura em app.cycle_enabled — o pai colapsado
+                            # (acima) não é garantia de que um filho com altura
+                            # PRÓPRIA fixa também colapse; sem isso ele fica
+                            # invisível mas ainda ocupando espaço e recebendo
+                            # toque (mesmo bug de "widget fantasma" já visto
+                            # nos cards de conta/login, ver ui.kv histórico)
+                            BoxLayout:
+                                size_hint_y: None
+                                height: dp(38) if app.cycle_enabled else 0
+                                spacing: dp(6)
+
+                                ClayButton:
+                                    text: app.language and (app.t('work_cycle_preset_12x36'))
+                                    bg_color: app.accent_soft
+                                    text_color: app.text_dark
+                                    disabled: not app.cycle_enabled
+                                    on_release: app.apply_cycle_preset('12x36')
+
+                                ClayButton:
+                                    text: app.language and (app.t('work_cycle_preset_24x48'))
+                                    bg_color: app.accent_soft
+                                    text_color: app.text_dark
+                                    disabled: not app.cycle_enabled
+                                    on_release: app.apply_cycle_preset('24x48')
+
+                                ClayButton:
+                                    text: app.language and (app.t('work_cycle_preset_custom'))
+                                    bg_color: app.accent_soft
+                                    text_color: app.text_dark
+                                    disabled: not app.cycle_enabled
+                                    on_release: app.apply_cycle_preset('custom')
+
+                            # Label puro, não FieldLabel: o FieldLabel tem uma
+                            # altura própria (max(dp(18), texture_size)) fixada
+                            # na CLASSE, que vence qualquer tentativa de
+                            # sobrescrever "height:" numa instância — a label
+                            # nunca colapsava de verdade, mesmo "escondida"
+                            # (confirmado com teste isolado). Plain Label não
+                            # tem esse conflito.
+                            Label:
+                                text: app.language and (app.t('work_cycle_length_label'))
+                                color: app.muted
+                                bold: True
+                                font_size: "12sp"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: dp(18) if app.cycle_enabled else 0
+
+                            ClaySpinner:
+                                id: cycle_length_spinner
+                                text: str(app.cycle_length)
+                                values: app.cycle_length_values()
+                                size_hint_y: None
+                                height: dp(42) if app.cycle_enabled else 0
+                                disabled: not app.cycle_enabled
+                                on_text: app.set_cycle_length(self.text)
+
+                            Label:
+                                text: app.language and (app.t('work_cycle_off_days_label'))
+                                color: app.muted
+                                bold: True
+                                font_size: "12sp"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: dp(18) if app.cycle_enabled else 0
+
+                            BoxLayout:
+                                id: cycle_day_toggles
+                                size_hint_y: None
+                                height: dp(34) if app.cycle_enabled else 0
+                                disabled: not app.cycle_enabled
+                                spacing: dp(4)
+
+                            Label:
+                                text: app.language and (app.t('work_cycle_today_label'))
+                                color: app.muted
+                                bold: True
+                                font_size: "12sp"
+                                halign: "left"
+                                valign: "middle"
+                                text_size: self.width, None
+                                size_hint_y: None
+                                height: dp(18) if app.cycle_enabled else 0
+
+                            ClaySpinner:
+                                id: cycle_today_spinner
+                                text: "1"
+                                values: ["1"]
+                                size_hint_y: None
+                                height: dp(42) if app.cycle_enabled else 0
+                                disabled: not app.cycle_enabled
+                                on_text: app.set_cycle_today(self.text)
+
+                    # Premium — compra única de US$ 3 (ver README > Monetização).
+                    # Sem checkbox de compra falso: o botão fica visível mas
+                    # desabilitado até o Play Billing estar integrado de
+                    # verdade (mesma postura do botão do Google mais abaixo).
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(6)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        Label:
+                            text: app.language and (app.t('premium_active_title') if app.is_premium else app.t('premium_title'))
+                            color: app.accent if app.is_premium else app.text_dark
+                            bold: True
+                            font_size: "14sp"
+                            size_hint_y: None
+                            height: dp(22)
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+
+                        Label:
+                            text: app.language and (app.t('premium_perks_note'))
+                            color: app.muted
+                            font_size: "11sp"
+                            size_hint_y: None
+                            height: self.texture_size[1]
+                            halign: "left"
+                            valign: "top"
+                            text_size: self.width, None
+
+                        # 2 formas de pagamento, 2 provedores diferentes —
+                        # cartão vai pro Payment Link do Stripe (navegador),
+                        # Pix gera um QR code na hora via Mercado Pago (a
+                        # conta Stripe deste projeto não tem Pix liberado)
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(42) if not app.is_premium else 0
+                            opacity: 1 if not app.is_premium else 0
+                            spacing: dp(8)
+
+                            ClayButton:
+                                text: app.language and (app.t('btn_buy_premium_usd'))
+                                bg_color: app.accent if app.has_account else app.bg_card
+                                text_color: app.text_light if app.has_account else app.muted
+                                disabled: not app.has_account
+                                on_release: app.buy_premium()
+
+                            ClayButton:
+                                text: app.language and (app.t('btn_buy_premium_pix'))
+                                bg_color: app.accent if app.has_account else app.bg_card
+                                text_color: app.text_light if app.has_account else app.muted
+                                disabled: not app.has_account
+                                on_release: app.buy_premium_pix()
+
+                        Label:
+                            text: app.pix_error
+                            color: app.danger
+                            font_size: "10sp"
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.width, None
+                            size_hint_y: None
+                            height: (self.texture_size[1] + dp(4)) if app.pix_error else 0
+
+                        # pagou no navegador e o Premium não ligou sozinho? o
+                        # webhook confirma no backend; isto só re-lê o resultado
+                        ClayButton:
+                            text: app.language and (app.t('btn_check_premium'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(38) if (app.has_account and not app.is_premium) else 0
+                            opacity: 1 if (app.has_account and not app.is_premium) else 0
+                            disabled: not (app.has_account and not app.is_premium)
+                            on_release: app.check_premium_now()
+
+                        Label:
+                            text: app.language and (app.t('premium_login_required_note') if not app.has_account else app.t('premium_checkout_note'))
+                            color: app.muted
+                            font_size: "10sp"
+                            size_hint_y: None
+                            height: dp(28) if not app.is_premium else 0
+                            opacity: 1 if not app.is_premium else 0
+                            halign: "center"
+                            valign: "top"
+                            text_size: self.width, None
+
+                    # Modo Sem Penalidade — um dos benefícios do Premium acima,
+                    # com card próprio porque é um toggle (liga/desliga), não
+                    # algo automático como os outros benefícios
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(4)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        Label:
+                            text: app.language and (app.t('no_penalty_title'))
+                            color: app.muted
+                            bold: True
+                            font_size: "13sp"
+                            size_hint_y: None
+                            height: dp(20)
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+
+                        Label:
+                            text: app.language and (app.t('no_penalty_desc'))
+                            color: app.muted
+                            font_size: "11sp"
+                            size_hint_y: None
+                            height: dp(30)
+                            halign: "left"
+                            valign: "top"
+                            text_size: self.width, None
+
+                        ClayButton:
+                            text: app.language and (app.no_penalty_mode,) and (app.t('no_penalty_on') if app.no_penalty_mode else app.t('no_penalty_off')) if app.is_premium else app.t('no_penalty_title')
+                            bg_color: (app.accent if app.no_penalty_mode else app.bg_card) if app.is_premium else app.bg_card
+                            text_color: (app.text_light if app.no_penalty_mode else app.text_dark) if app.is_premium else app.muted
+                            disabled: not app.is_premium
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.toggle_no_penalty_mode()
+
+                        Label:
+                            text: app.language and (app.t('premium_locked_note'))
+                            color: app.muted
+                            font_size: "10sp"
+                            size_hint_y: None
+                            height: dp(28) if not app.is_premium else 0
+                            opacity: 1 if not app.is_premium else 0
+                            halign: "center"
+                            valign: "top"
+                            text_size: self.width, None
+
+                    # sem sessão: formulário de cadastro ou login (account_mode)
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                        opacity: 1 if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                        disabled: app.has_account or app.account_awaiting_confirmation
+
+                        Label:
+                            text: app.language and (app.account_mode,) and (app.t('create_account_heading') if app.account_mode == "signup" else app.t('login_heading'))
+                            color: app.text_dark
+                            bold: True
+                            size_hint_y: None
+                            height: dp(24)
+
+                        FieldLabel:
+                            text: app.language and (app.t('field_name'))
+                            size_hint_y: None
+                            # composto com "not has_account and not
+                            # awaiting_confirmation" (mesma condição do card
+                            # inteiro, linha ~3073) — sem isso, esse campo (e os
+                            # de baixo) viram fantasma quando o usuário está
+                            # logado mas account_mode ainda está "signup" (ver
+                            # comentário do ScrollView de avatares mais abaixo
+                            # pra entender o mecanismo do bug).
+                            height: (self.texture_size[1] if app.account_mode == "signup" else 0) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            opacity: 1 if app.account_mode == "signup" else 0
+                        TextInput:
+                            id: account_name_input
+                            multiline: True
+                            size_hint_y: None
+                            # sem piso: multiline alinha em cima, um piso maior
+                            # que 1 linha sobrava vazio embaixo
+                            height: ((min(dp(72), self.minimum_height)) if app.account_mode == "signup" else 0) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            opacity: 1 if app.account_mode == "signup" else 0
+                            disabled: app.account_mode != "signup"
+                            background_color: app.bg_app
+                            foreground_color: app.text_dark
+
+                        FieldLabel:
+                            text: app.language and (app.t('field_email'))
+                            height: (max(dp(18), self.texture_size[1])) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                        TextInput:
+                            id: account_email_input
+                            multiline: True
+                            size_hint_y: None
+                            height: (min(dp(72), self.minimum_height)) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            background_color: app.bg_app
+                            foreground_color: app.text_dark
+
+                        FieldLabel:
+                            text: app.language and (app.account_mode,) and (app.t('field_password_hint') if app.account_mode == "signup" else app.t('field_password'))
+                            height: (max(dp(18), self.texture_size[1])) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                        BoxLayout:
+                            size_hint_y: None
+                            height: account_password_input.height
+                            spacing: dp(6)
+
+                            TextInput:
+                                id: account_password_input
+                                password: not app.password_visible
+                                multiline: True
+                                size_hint_y: None
+                                height: (min(dp(72), self.minimum_height)) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                                background_color: app.bg_app
+                                foreground_color: app.text_dark
+
+                            ClayButton:
+                                text: app.language and (app.t('btn_hide_password') if app.password_visible else app.t('btn_show_password'))
+                                bg_color: app.accent_soft
+                                text_color: app.text_dark
+                                size_hint_x: None
+                                width: dp(78)
+                                on_release: app.toggle_password_visible()
+
+                        # "Esqueci minha senha" como texto clicável logo abaixo
+                        # do campo de senha, não como botão de largura inteira:
+                        # é uma saída de exceção, não uma ação de mesmo peso que
+                        # "Entrar". Só aparece no modo login.
+                        TapArea:
+                            size_hint_y: None
+                            height: (dp(22) if app.account_mode == "login" else 0) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            opacity: 1 if app.account_mode == "login" else 0
+                            disabled: app.account_mode != "login"
+                            on_release: app.request_password_reset(account_email_input.text)
+
+                            Label:
+                                text: app.language and (app.t('btn_forgot_password'))
+                                color: app.accent
+                                font_size: "11sp"
+                                underline: True
+                                halign: "right"
+                                valign: "middle"
+                                text_size: self.size
+
+                        Label:
+                            text: app.account_error
+                            color: app.danger
+                            size_hint_y: None
+                            height: (dp(18) if app.account_error else 0) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            font_size: "11sp"
+
+                        ClayButton:
+                            text: app.language and (app.account_mode,) and (app.t('create_account_heading') if app.account_mode == "signup" else app.t('login_heading'))
+                            bg_color: app.accent
+                            size_hint_y: None
+                            height: dp(44) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            on_release: app.submit_account_form()
+
+                        ClayButton:
+                            text: app.language and (app.account_mode,) and (app.t('btn_have_account') if app.account_mode == "signup" else app.t('btn_need_account'))
+                            bg_color: app.bg_card
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(40) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            on_release: app.toggle_account_mode()
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_continue_google'))
+                            bg_color: app.bg_card
+                            text_color: app.muted
+                            disabled: True
+                            size_hint_y: None
+                            # condicionado ao mesmo estado do card (ver comentário
+                            # no ScrollView de avatares mais abaixo): sem isso,
+                            # fica "fantasma" — invisível mas ainda bloqueando
+                            # toque — quando o card colapsa.
+                            height: dp(44) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+
+                        Label:
+                            text: app.language and (app.t('google_disabled_note'))
+                            color: app.muted
+                            font_size: "10sp"
+                            size_hint_y: None
+                            height: dp(30) if (not app.has_account and not app.account_awaiting_confirmation) else 0
+                            halign: "center"
+                            text_size: self.width, None
+
+                    # cadastro enviado, esperando confirmação real por e-mail
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height if app.account_awaiting_confirmation else 0
+                        opacity: 1 if app.account_awaiting_confirmation else 0
+                        disabled: not app.account_awaiting_confirmation
+
+                        Label:
+                            text: app.language and (app.t('confirm_email_heading'))
+                            color: app.text_dark
+                            bold: True
+                            size_hint_y: None
+                            height: dp(24) if app.account_awaiting_confirmation else 0
+
+                        Label:
+                            text: app.language and (app.t('confirm_email_note'))
+                            color: app.muted
+                            font_size: "11sp"
+                            size_hint_y: None
+                            height: dp(52) if app.account_awaiting_confirmation else 0
+                            halign: "center"
+                            valign: "top"
+                            text_size: self.width, None
+
+                        Label:
+                            text: app.account_error
+                            color: app.danger
+                            size_hint_y: None
+                            height: (dp(18) if app.account_error else 0) if app.account_awaiting_confirmation else 0
+                            font_size: "11sp"
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_already_confirmed'))
+                            bg_color: app.success
+                            size_hint_y: None
+                            height: dp(44) if app.account_awaiting_confirmation else 0
+                            on_release: app.retry_login_after_confirmation()
+
+                    # sessão ativa: mostra e permite editar nome/e-mail
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(16)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height if app.has_account else 0
+                        opacity: 1 if app.has_account else 0
+                        disabled: not app.has_account
+
+                        # conta logada, enxuta: nome, trocar senha (link no
+                        # e-mail), sair — e "apagar conta" discreto no canto.
+                        # E-mail só aparece como texto (não se troca por aqui).
+                        # Toda altura condiciona em has_account: filho de card
+                        # colapsado vira "fantasma" que absorve toque (ver o
+                        # comentário do TextInput abaixo)
+                        Label:
+                            text: app.account_email
+                            color: app.muted
+                            font_size: "12sp"
+                            size_hint_y: None
+                            height: dp(18) if app.has_account else 0
+                            halign: "left"
+                            valign: "middle"
+                            text_size: self.size
+                            shorten: True
+
+                        FieldLabel:
+                            text: app.language and (app.t('field_name'))
+                            height: (max(dp(18), self.texture_size[1])) if app.has_account else 0
+                        TextInput:
+                            id: profile_name_input
+                            text: app.account_name
+                            multiline: False
+                            size_hint_y: None
+                            # TextInput não colapsa sozinho quando o card pai
+                            # zera a própria altura — sem condicionar aqui
+                            # também, ele vira um campo "fantasma": invisível
+                            # mas ainda absorvendo toque, bem em cima de botões
+                            # de outra seção da tela.
+                            height: dp(40) if app.has_account else 0
+                            background_color: app.bg_app
+                            foreground_color: app.text_dark
+
+                        Label:
+                            text: app.account_error
+                            color: app.danger
+                            size_hint_y: None
+                            height: (self.texture_size[1] + dp(4)) if (app.account_error and app.has_account) else 0
+                            text_size: self.width, None
+                            font_size: "11sp"
+
+                        Label:
+                            text: app.account_status
+                            color: app.success
+                            size_hint_y: None
+                            height: (self.texture_size[1] + dp(4)) if (app.account_status and app.has_account) else 0
+                            text_size: self.width, None
+                            font_size: "11sp"
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_save_name'))
+                            bg_color: app.accent
+                            size_hint_y: None
+                            height: dp(44) if app.has_account else 0
+                            on_release: app.save_profile()
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_change_password'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(44) if app.has_account else 0
+                            on_release: app.pedir_troca_senha()
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_logout'))
+                            bg_color: app.bg_card
+                            text_color: app.danger
+                            size_hint_y: None
+                            height: dp(44) if app.has_account else 0
+                            on_release: app.logout()
+
+                        # apagar conta: pequeno e no canto de propósito — é
+                        # irreversível, não pode ser tocado por engano
+                        BoxLayout:
+                            size_hint_y: None
+                            height: dp(24) if app.has_account else 0
+                            Widget:
+                            TapArea:
+                                size_hint_x: None
+                                width: apagar_conta_lbl.texture_size[0] + dp(8)
+                                disabled: not app.has_account
+                                on_release: app.pedir_apagar_conta()
+                                Label:
+                                    id: apagar_conta_lbl
+                                    text: app.language and (app.t('btn_delete_account'))
+                                    color: app.muted
+                                    font_size: "11sp"
+                                    underline: True
+
+                    # exporta/restaura o daily_quest.db inteiro via diálogo nativo (tkinter)
+                    ClayCard:
+                        id: tut_backup_card
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        FieldLabel:
+                            text: app.language and (app.t('backup_section_title'))
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_export_backup'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.export_backup()
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_import_backup'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.import_backup()
+
+                        # backup preso à conta — Storage do Supabase, ver
+                        # README > Backup na Nuvem. Só aparece logado. Nem
+                        # SALVAR nem RESTAURAR têm botão: salvar roda sozinho
+                        # a cada 12h (App._auto_backup_nuvem) e restaurar roda
+                        # sozinho ao entrar na conta (App._apos_entrar ->
+                        # restore_from_cloud(automatico=True), chamado nas 4
+                        # portas de login). Nenhum dos dois precisa de ação
+                        # manual — ver o comentário de _apos_entrar no main.py.
+                        FieldLabel:
+                            text: app.language and (app.t('backup_cloud_note'))
+                            height: dp(18) if app.has_account else 0
+                            opacity: 1 if app.has_account else 0
+
+                        Label:
+                            text: app.language and (app.t('backup_import_warning'))
+                            color: app.muted
+                            font_size: "10sp"
+                            size_hint_y: None
+                            height: dp(16)
+
+                        Label:
+                            text: app.backup_status
+                            color: app.success
+                            bold: True
+                            font_size: "11sp"
+                            size_hint_y: None
+                            height: dp(16) if app.backup_status else 0
+
+                    # só leitura — nenhuma tela nova, abre um popup com o texto
+                    ClayCard:
+                        bg_color: app.bg_card_soft
+                        orientation: "vertical"
+                        padding: dp(14)
+                        spacing: dp(8)
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        FieldLabel:
+                            text: app.language and (app.t('legal_section_title'))
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_privacy_policy'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.open_legal_popup("privacy")
+
+                        ClayButton:
+                            text: app.language and (app.t('btn_terms_of_use'))
+                            bg_color: app.accent_soft
+                            text_color: app.text_dark
+                            size_hint_y: None
+                            height: dp(42)
+                            on_release: app.open_legal_popup("terms")
+
+    # barra de abas embaixo — ícone de linha + rótulo, cor de destaque só na
+    # aba ativa, sem pílula preenchida (ver docs/tipografia-e-navegacao.md).
+    # Uma linha fina no topo separa do conteúdo. Some durante splash/onboarding.
+    BoxLayout:
+        id: tut_nav_bar
+        size_hint_y: None
+        height: 0 if (app.current_screen,) and app.is_onboarding_screen() else dp(60)
+        opacity: 0 if (app.current_screen,) and app.is_onboarding_screen() else 1
+        disabled: (app.current_screen,) and app.is_onboarding_screen()
+        padding: dp(4), dp(6)
+        canvas.before:
+            Color:
+                rgba: app.bg_app
+            Rectangle:
+                pos: self.pos
+                size: self.size
+            Color:
+                rgba: 0, 0, 0, 0.08
+            Line:
+                points: self.x, self.top, self.right, self.top
+                width: dp(1)
+
+        NavTab:
+            kind: "missions"
+            label: app.language and (app.t('nav_missions'))
+            active: app.current_screen == "missions"
+            on_release: app.switch_screen("missions")
+
+        NavTab:
+            kind: "history"
+            label: app.language and (app.t('nav_history'))
+            active: app.current_screen == "history"
+            on_release: app.switch_screen("history")
+
+        NavTab:
+            kind: "chart"
+            label: app.language and (app.t('nav_chart'))
+            active: app.current_screen == "chart"
+            on_release: app.switch_screen("chart")
+
+        NavTab:
+            kind: "badges"
+            label: app.language and (app.t('nav_badges'))
+            active: app.current_screen == "badges"
+            on_release: app.switch_screen("badges")
+
+        NavTab:
+            id: tut_settings_tab
+            kind: "settings"
+            label: app.language and (app.t('nav_settings'))
+            active: app.current_screen == "settings"
+            on_release: app.switch_screen("settings")
+
+    # espaço reservado pro banner do AdMob (só Android/grátis, ver ads.py). O
+    # AdView de verdade é adicionado por cima pelo próprio SDK (gravity BOTTOM),
+    # aqui só garantimos que ele não cobre a barra de abas. 0 fora disso.
+    Widget:
+        size_hint_y: None
+        height: dp(50) if app.ad_banner_visible else 0

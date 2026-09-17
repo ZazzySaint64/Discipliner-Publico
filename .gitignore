@@ -1,0 +1,53 @@
+venv/
+__pycache__/
+*.pyc
+daily_quest.db
+daily_quest.db-*
+
+# segredos/config local — nunca commitar
+.env
+.env.*
+*.env
+secrets.*
+# chaves de assinatura / certificados — NUNCA no repo (público ou não)
+*.keystore
+*.jks
+*.pem
+*.p12
+*.pfx
+*.key
+google-services.json
+GoogleService-Info.plist
+local.properties
+service-account*.json
+# scripts de teste local — nunca commitar
+_toggle_premium.py
+_debug_premium_sync.py
+_debug_*.py
+_first_run.py
+
+# config da IDE — específico da máquina, fora do repo
+.idea/
+.vscode/
+
+# saída e cache do buildozer (empacotamento Android) e pacotes gerados —
+# o APK é buildado localmente (scripts/build-local.sh), nunca vai pro repo
+.buildozer/
+bin/
+*.apk
+*.aab
+*.log
+
+# cache local do CLI do Supabase (versão checada, ref do projeto linkado) —
+# específico da máquina, não do projeto
+supabase/.temp/
+
+# foto de perfil enviada pelo usuario (fica ao lado do daily_quest.db)
+profile_photo*.png
+
+# material de loja (prints, arte de divulgacao) — fica so na maquina
+galeria_play_store/
+# documento de trabalho com limitacoes/pendencias
+LIMITACOES.md
+# relatórios de auditoria de segurança feitos localmente
+CLAUDE-SECURITY-*/

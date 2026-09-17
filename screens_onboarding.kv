@@ -1,0 +1,366 @@
+#:import TITLE_FONT main.TITLE_FONT
+
+# Telas de onboarding (só aparecem 1x, na 1ª execução). Ficavam inline no
+# ScreenManager do ui.kv — parseadas em TODO boot mesmo pra quem já passou
+# delas. Agora são classes carregadas sob demanda por App._ensure_screen no
+# 1º switch_screen pra uma delas. Ver main.py _LAZY_SCREEN_KV / _LAZY_SCREENS.
+
+<OnbWelcome@Screen>:
+    name: "onboarding_welcome"
+    ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            padding: dp(20)
+            spacing: dp(14)
+
+            Image:
+                # NÃO app.icon: esse é o assets/icon.png, opaco e sangrando até
+                # a borda de propósito (launcher antigo) — aqui virava quadrado
+                # verde. presplash_icon.png é o selo arredondado, com alfa
+                source: "assets/presplash_icon.png"
+                size_hint: None, None
+                size: dp(76), dp(76)
+                pos_hint: {"center_x": 0.5}
+                allow_stretch: True
+                keep_ratio: True
+
+            ClaySpinner:
+                id: onb_language_spinner
+                text: app.language_label()
+                values: app.language_values()
+                size_hint_y: None
+                height: dp(42)
+                on_text: app.set_language_from_label(self.text)
+
+            # troca de tema já na primeira tela, antes até de criar
+            # conta — algumas pessoas relataram dificuldade de leitura
+            # com o tema padrão, resolver isso cedo evita que a pessoa
+            # desista antes de sequer entrar no app
+            ClayButton:
+                text: app.language and (app.t('label_switch_to_light') if app.dark_mode else app.t('label_switch_to_dark'))
+                bg_color: app.accent_soft
+                text_color: app.text_dark
+                size_hint_y: None
+                height: dp(42)
+                on_release: app.toggle_dark_mode()
+
+            Label:
+                text: app.language and (app.t('onboarding_welcome_title'))
+                font_name: TITLE_FONT
+                color: app.text_dark
+                bold: True
+                font_size: "22sp"
+                halign: "center"
+                size_hint_y: None
+                height: dp(36)
+                text_size: self.width, None
+
+            Label:
+                text: app.language and (app.t('onboarding_welcome_body'))
+                color: app.text_dark
+                font_size: "14sp"
+                halign: "left"
+                valign: "top"
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+
+            FieldLabel:
+                text: app.language and (app.t('privacy_policy_title'))
+
+            Label:
+                text: app.language and (app.t('privacy_policy_text'))
+                color: app.muted
+                font_size: "12sp"
+                halign: "left"
+                valign: "top"
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+
+            FieldLabel:
+                text: app.language and (app.t('terms_title'))
+
+            Label:
+                text: app.language and (app.t('terms_of_use_text'))
+                color: app.muted
+                font_size: "12sp"
+                halign: "left"
+                valign: "top"
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+
+            ClayButton:
+                text: app.language and (app.t('btn_continue'))
+                bg_color: app.accent
+                size_hint_y: None
+                height: dp(48)
+                on_release: app.go_to_account_choice()
+
+<OnbAccountChoice@Screen>:
+    name: "onboarding_account_choice"
+    BoxLayout:
+        orientation: "vertical"
+        padding: dp(24)
+        spacing: dp(16)
+
+        Widget:
+
+        Label:
+            text: app.language and (app.t('onboarding_account_choice_title'))
+            font_name: TITLE_FONT
+            color: app.text_dark
+            bold: True
+            font_size: "20sp"
+            halign: "center"
+            size_hint_y: None
+            height: dp(34)
+            text_size: self.width, None
+
+        Label:
+            text: app.language and (app.t('onboarding_account_choice_body'))
+            color: app.muted
+            font_size: "13sp"
+            halign: "center"
+            valign: "top"
+            size_hint_y: None
+            height: self.texture_size[1]
+            text_size: self.width, None
+
+        Widget:
+
+        ClayButton:
+            text: app.language and (app.t('create_account_heading'))
+            bg_color: app.accent
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.go_to_account_form("signup")
+
+        ClayButton:
+            text: app.language and (app.t('btn_have_account'))
+            bg_color: app.bg_card_soft
+            text_color: app.text_dark
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.go_to_account_form("login")
+
+        ClayButton:
+            text: app.language and (app.t('btn_continue_guest'))
+            bg_color: app.bg_card
+            text_color: app.text_dark
+            size_hint_y: None
+            height: dp(48)
+            on_release: app.continue_as_guest()
+
+<OnbAccount@Screen>:
+    name: "onboarding_account"
+    ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            padding: dp(24)
+            spacing: dp(10)
+
+            Label:
+                text: app.language and (app.account_mode,) and (app.t('create_account_heading') if app.account_mode == "signup" else app.t('login_heading'))
+                font_name: TITLE_FONT
+                color: app.text_dark
+                bold: True
+                font_size: "20sp"
+                halign: "center"
+                size_hint_y: None
+                height: dp(34)
+                text_size: self.width, None
+
+            FieldLabel:
+                text: app.language and (app.t('field_name'))
+                size_hint_y: None
+                height: self.texture_size[1] if app.account_mode == "signup" else 0
+                opacity: 1 if app.account_mode == "signup" else 0
+            TextInput:
+                id: onb_account_name_input
+                multiline: True
+                size_hint_y: None
+                # rente ao texto (multiline alinha em cima, então um piso maior
+                # que 1 linha sobrava vazio embaixo — sem piso, só teto pra
+                # não deixar crescer demais colando um texto gigante)
+                height: (min(dp(72), self.minimum_height)) if app.account_mode == "signup" else 0
+                opacity: 1 if app.account_mode == "signup" else 0
+                disabled: app.account_mode != "signup"
+                background_color: app.bg_card_soft
+                foreground_color: app.text_dark
+
+            FieldLabel:
+                text: app.language and (app.t('field_email'))
+            TextInput:
+                id: onb_account_email_input
+                multiline: True
+                size_hint_y: None
+                height: min(dp(72), self.minimum_height)
+                background_color: app.bg_card_soft
+                foreground_color: app.text_dark
+
+            FieldLabel:
+                text: app.language and (app.account_mode,) and (app.t('field_password_hint') if app.account_mode == "signup" else app.t('field_password'))
+            BoxLayout:
+                size_hint_y: None
+                height: onb_account_password_input.height
+                spacing: dp(6)
+
+                TextInput:
+                    id: onb_account_password_input
+                    password: not app.password_visible
+                    multiline: True
+                    size_hint_y: None
+                    height: min(dp(72), self.minimum_height)
+                    background_color: app.bg_card_soft
+                    foreground_color: app.text_dark
+
+                ClayButton:
+                    text: app.language and (app.t('btn_hide_password') if app.password_visible else app.t('btn_show_password'))
+                    bg_color: app.accent_soft
+                    text_color: app.text_dark
+                    size_hint_x: None
+                    width: dp(78)
+                    on_release: app.toggle_password_visible()
+
+            # texto clicável logo abaixo da senha, não botão de largura inteira
+            # (mesma decisão da tela de Ajustes, ver ui.kv)
+            TapArea:
+                size_hint_y: None
+                height: dp(22) if app.account_mode == "login" else 0
+                opacity: 1 if app.account_mode == "login" else 0
+                disabled: app.account_mode != "login"
+                on_release: app.request_password_reset(onb_account_email_input.text)
+
+                Label:
+                    text: app.language and (app.t('btn_forgot_password'))
+                    color: app.accent
+                    font_size: "11sp"
+                    underline: True
+                    halign: "right"
+                    valign: "middle"
+                    text_size: self.size
+
+            Label:
+                text: app.account_error
+                color: app.danger
+                size_hint_y: None
+                height: dp(18) if app.account_error else 0
+                font_size: "11sp"
+
+            ClayButton:
+                text: app.language and (app.account_mode,) and (app.t('create_account_heading') if app.account_mode == "signup" else app.t('login_heading'))
+                bg_color: app.accent
+                size_hint_y: None
+                height: dp(48)
+                on_release: app.submit_onboarding_account()
+
+            ClayButton:
+                text: app.language and (app.account_mode,) and (app.t('btn_have_account') if app.account_mode == "signup" else app.t('btn_need_account'))
+                bg_color: app.bg_card_soft
+                text_color: app.text_dark
+                size_hint_y: None
+                height: dp(40)
+                on_release: app.toggle_account_mode()
+
+            ClayButton:
+                text: app.language and (app.t('btn_continue_guest'))
+                bg_color: app.bg_card
+                text_color: app.muted
+                size_hint_y: None
+                height: dp(44)
+                on_release: app.continue_as_guest()
+
+# Tela de senha nova — aberta pelo link do e-mail (discipliner://reset-password,
+# App._on_reset_deeplink). Carregada sob demanda como as de onboarding: quase
+# ninguém chega aqui num boot comum.
+<ResetSenha@Screen>:
+    name: "reset_password"
+    ScrollView:
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            padding: dp(20)
+            spacing: dp(12)
+
+            Label:
+                text: app.language and (app.t('reset_password_title'))
+                font_name: TITLE_FONT
+                color: app.text_dark
+                bold: True
+                font_size: "22sp"
+                halign: "center"
+                size_hint_y: None
+                height: dp(40)
+                text_size: self.width, None
+
+            Label:
+                text: app.language and (app.t('reset_password_body').format(email=app.reset_email))
+                color: app.muted
+                font_size: "14sp"
+                halign: "center"
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+
+            FieldLabel:
+                text: app.language and (app.t('field_new_password'))
+
+            TextInput:
+                id: reset_password_input
+                password: True
+                multiline: False
+                size_hint_y: None
+                height: dp(44)
+                background_color: app.bg_card
+                foreground_color: app.text_dark
+
+            FieldLabel:
+                text: app.language and (app.t('field_confirm_password'))
+
+            TextInput:
+                id: reset_password_confirm
+                password: True
+                multiline: False
+                size_hint_y: None
+                height: dp(44)
+                background_color: app.bg_card
+                foreground_color: app.text_dark
+
+            Label:
+                text: app.language and (app.t('field_password_hint'))
+                color: app.muted
+                font_size: "11sp"
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+
+            Label:
+                text: app.reset_error
+                color: app.danger
+                font_size: "12sp"
+                halign: "center"
+                size_hint_y: None
+                height: self.texture_size[1] if app.reset_error else 0
+                text_size: self.width, None
+
+            ClayButton:
+                text: app.language and (app.t('btn_save_password'))
+                bg_color: app.accent
+                size_hint_y: None
+                height: dp(48)
+                on_release: app.salvar_nova_senha()
+
+            ClayButton:
+                text: app.language and (app.t('btn_cancel'))
+                bg_color: app.bg_card
+                text_color: app.text_dark
+                size_hint_y: None
+                height: dp(44)
+                on_release: app.sair_da_tela_senha()

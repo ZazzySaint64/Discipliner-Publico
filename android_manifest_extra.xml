@@ -1,0 +1,66 @@
+<!-- Tela do alarme de missão (android_java/AlarmeActivity.java). Task própria
+     (taskAffinity vazia + singleInstance) pra encerrar o alarme não jogar a
+     pessoa dentro do app, e fora dos recentes. showWhenLocked/turnScreenOn
+     também são pedidos no onCreate; aqui garante já na criação da janela. -->
+<activity
+    android:name=".AlarmeActivity"
+    android:exported="false"
+    android:showWhenLocked="true"
+    android:turnScreenOn="true"
+    android:excludeFromRecents="true"
+    android:taskAffinity=""
+    android:launchMode="singleInstance"
+    android:screenOrientation="portrait"
+    android:theme="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen" />
+
+<activity-alias
+    android:name=".IconBronze"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@drawable/ic_bronze"
+    android:label="@string/app_name"
+    android:targetActivity="org.kivy.android.PythonActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity-alias>
+
+<activity-alias
+    android:name=".IconPrata"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@drawable/ic_prata"
+    android:label="@string/app_name"
+    android:targetActivity="org.kivy.android.PythonActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity-alias>
+
+<activity-alias
+    android:name=".IconOuro"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@drawable/ic_ouro"
+    android:label="@string/app_name"
+    android:targetActivity="org.kivy.android.PythonActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity-alias>
+
+<activity-alias
+    android:name=".IconDiamante"
+    android:enabled="false"
+    android:exported="true"
+    android:icon="@drawable/ic_diamante"
+    android:label="@string/app_name"
+    android:targetActivity="org.kivy.android.PythonActivity">
+    <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent-filter>
+</activity-alias>

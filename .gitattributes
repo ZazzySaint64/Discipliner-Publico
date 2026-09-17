@@ -1,0 +1,3 @@
+# Scripts de shell SEMPRE com LF — CRLF quebra no Linux/WSL com
+# "bad interpreter: /usr/bin/env bash^M". scripts/build-local.sh roda no WSL.
+*.sh text eol=lf
