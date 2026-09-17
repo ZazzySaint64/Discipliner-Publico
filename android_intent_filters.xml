@@ -1,0 +1,12 @@
+<!-- Deep link do e-mail de confirmação de conta (discipliner://login-callback).
+     Vai pra DENTRO do <activity> da PythonActivity via
+     android.manifest.intent_filters no buildozer.spec. Ver deeplink.py /
+     account.EMAIL_CONFIRM_DEEPLINK. -->
+<intent-filter android:autoVerify="false">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="discipliner" android:host="login-callback" />
+    <!-- link do e-mail de redefinir senha: abre a tela de senha nova -->
+    <data android:scheme="discipliner" android:host="reset-password" />
+</intent-filter>

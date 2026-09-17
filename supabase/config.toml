@@ -1,0 +1,14 @@
+# Desliga a verificação de JWT do gateway do Supabase só pra essa function —
+# webhooks do Stripe não mandam o cabeçalho de autenticação do Supabase (eles
+# mandam "stripe-signature" no lugar, conferido dentro do próprio
+# stripe-webhook/index.ts). Sem isso, o gateway barra a chamada ANTES dela
+# chegar no código com "UNAUTHORIZED_NO_AUTH_HEADER", mesmo vindo do Stripe.
+[functions.stripe-webhook]
+verify_jwt = false
+
+# mesmo motivo do stripe-webhook acima — o Mercado Pago também não manda o
+# cabeçalho de autenticação do Supabase na notificação. create-pix-payment
+# fica de fora daqui de propósito: continua exigindo JWT (só usuário logado
+# no app pode pedir um Pix novo).
+[functions.mercadopago-webhook]
+verify_jwt = false

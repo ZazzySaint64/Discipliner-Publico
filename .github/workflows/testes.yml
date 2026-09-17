@@ -1,0 +1,48 @@
+name: Testes
+
+# A suíte test_*.py roda a cada push pra alpha-1/beta e no botão "Run workflow".
+#
+# O APK NÃO é mais buildado aqui. O build agora é local, no WSL2 + Ubuntu 22.04
+# (scripts/build-local.sh, que espelha o que este job fazia). O Actions ficou
+# só como "auditoria antes de lançar": se a suíte quebrar num push, dá pra ver
+# aqui sem depender de lembrar de rodar os testes na mão.
+#
+# scripts/run_tests.py é a fonte única — o MESMO comando roda local
+# (Windows/WSL). Ele já tem timeout por teste e resume o resultado.
+on:
+  workflow_dispatch:
+  push:
+    branches: [alpha-1, beta]
+    paths:
+      - "**.py"
+      - "**.kv"
+      - "buildozer.spec"
+      - ".github/workflows/testes.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # a suíte inteira leva ~1min; se passar disso, algo travou
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dependências (Kivy headless + libs do app)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1 libmtdev1
+          python -m pip install --upgrade pip
+          # mesmas libs de runtime que o buildozer.spec declara
+          pip install kivy plyer pillow certifi
+
+      - name: Suíte de testes
+        env:
+          KIVY_NO_ARGS: "1"
+          SDL_AUDIODRIVER: dummy
+          SDL_VIDEODRIVER: dummy
+        # xvfb-run: alguns módulos importam kivy.graphics, que quer um display
+        # mesmo sem abrir janela. -a acha um número de display livre sozinho.
+        run: xvfb-run -a python scripts/run_tests.py

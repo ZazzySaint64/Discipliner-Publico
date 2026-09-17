@@ -1,0 +1,4 @@
+kivy
+plyer
+pillow
+certifi
